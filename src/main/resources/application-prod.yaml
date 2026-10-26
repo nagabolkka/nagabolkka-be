@@ -1,0 +1,23 @@
+# 운영(EC2) 설정 — SPRING_PROFILES_ACTIVE=prod 일 때 application.yaml 위에 덮어씀
+spring:
+  datasource:
+    url: jdbc:mysql://mysql:3306/${DB_NAME}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 5
+
+  h2:
+    console:
+      enabled: false     # 운영에서는 H2 콘솔 끔
+
+  jpa:
+    hibernate:
+      ddl-auto: update   # 운영: 테이블을 지우지 않고 바뀐 부분만 반영
+    show-sql: false
+    open-in-view: false
+
+server:
+  # Caddy(HTTPS) 뒤에서 동작 → 원래 요청이 https였다는 정보를 그대로 사용
+  forward-headers-strategy: framework
