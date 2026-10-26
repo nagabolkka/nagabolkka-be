@@ -2,7 +2,6 @@ spring:
   application:
     name: nagabolkka-backend
 
-  # 프로젝트 루트의 .env 파일을 읽어옴 (없어도 에러 안 남)
   config:
     import: optional:file:.env[.properties]
 
@@ -14,17 +13,16 @@ spring:
 
   h2:
     console:
-      enabled: true      # http://localhost:8080/h2-console 에서 DB 확인
+      enabled: true
 
   jpa:
     hibernate:
-      ddl-auto: create   # 서버 켤 때마다 테이블 새로 만듦 (개발용)
+      ddl-auto: create
     show-sql: true
     properties:
       hibernate:
         format_sql: true
 
-# 외부 API 키 (.env에서 읽어옴, 없으면 빈 값)
 kakao:
   rest-api-key: ${KAKAO_REST_API_KEY:}
   client-secret: ${KAKAO_CLIENT_SECRET:}
@@ -32,3 +30,5 @@ kma:
   service-key: ${KMA_SERVICE_KEY:}
 openai:
   api-key: ${OPENAI_API_KEY:}
+cors:
+  allowed-origins: http://localhost:5173
