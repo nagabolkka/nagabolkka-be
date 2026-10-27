@@ -1,0 +1,6 @@
+# api.nagabolkka.shop 으로 들어온 요청을 Spring(app:8080)으로 전달
+# HTTPS 인증서(Let's Encrypt)는 Caddy가 자동으로 발급·갱신
+api.nagabolkka.shop {
+	encode gzip
+	reverse_proxy app:8080
+}
