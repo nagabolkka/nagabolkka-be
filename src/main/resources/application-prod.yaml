@@ -22,3 +22,7 @@ server:
 
 cors:
   allowed-origins: https://nagabolkka.netlify.app
+
+jwt:
+  # 기본값 없음 → 서버 .env 에 JWT_SECRET 이 없으면 앱이 뜨지 않는다
+  secret: ${JWT_SECRET}
