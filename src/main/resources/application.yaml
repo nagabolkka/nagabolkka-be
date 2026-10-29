@@ -26,6 +26,15 @@ spring:
 kakao:
   rest-api-key: ${KAKAO_REST_API_KEY:}
   client-secret: ${KAKAO_CLIENT_SECRET:}
+
+  # 카카오 디벨로퍼스에도 같은 값 등록
+  allowed-redirect-uris:
+    - http://localhost:5173/oauth/kakao
+    - https://nagabolkka.netlify.app/oauth/kakao
+jwt:
+  # 운영은 application-prod.yaml 에서 JWT_SECRET 필수
+  secret: ${JWT_SECRET:local-dev-only-secret-key-change-me-0123456789}
+  access-token-expiration: 7d
 kma:
   service-key: ${KMA_SERVICE_KEY:}
 openai:
