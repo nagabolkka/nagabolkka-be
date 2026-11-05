@@ -2,6 +2,7 @@ package com.nagabolkka.backend.global.security;
 
 import com.nagabolkka.backend.domain.user.entity.Role;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -11,7 +12,6 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Date;
-import java.util.Optional;
 
 @Component
 public class JwtProvider {
@@ -20,11 +20,12 @@ public class JwtProvider {
 
     private final SecretKey key;
     private final Duration accessTokenExpiration;
+    private final Duration refreshTokenExpiration;
 
     public JwtProvider(JwtProperties jwtProperties) {
-        // 32바이트(256bit) 미만이면 여기서 WeakKeyException → 앱이 뜨지 않는다
         this.key = Keys.hmacShaKeyFor(jwtProperties.secret().getBytes(StandardCharsets.UTF_8));
         this.accessTokenExpiration = jwtProperties.accessTokenExpiration();
+        this.refreshTokenExpiration = jwtProperties.refreshTokenExpiration();
     }
 
     public String createAccessToken(Long userId, Role role) {
@@ -40,18 +41,28 @@ public class JwtProvider {
                 .compact();
     }
 
-    /** 서명 · 만료가 정상이면 userId, 아니면 empty (예외를 던지지 않는다) */
-    public Optional<Long> getUserId(String token) {
+    public JwtResult parse(String token) {
         try {
             Claims claims = Jwts.parser()
                     .verifyWith(key)
                     .build()
                     .parseSignedClaims(token)
                     .getPayload();
-            return Optional.of(Long.valueOf(claims.getSubject()));
+            return JwtResult.valid(Long.valueOf(claims.getSubject()));
+        } catch (ExpiredJwtException e) {
+            return JwtResult.expired();
         } catch (JwtException | IllegalArgumentException e) {
-            // 만료(ExpiredJwtException) · 서명 불일치 · 형식 오류 · sub 가 숫자가 아님
-            return Optional.empty();
+            // 서명 불일치 · 형식 오류 · sub 가 숫자가 아님 (NumberFormatException 도 IllegalArgumentException)
+            return JwtResult.invalid();
         }
+    }
+
+    /** 응답의 accessTokenExpiresIn (초) */
+    public long getAccessTokenExpiresIn() {
+        return accessTokenExpiration.toSeconds();
+    }
+
+    public Duration getRefreshTokenExpiration() {
+        return refreshTokenExpiration;
     }
 }
