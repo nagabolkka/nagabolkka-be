@@ -1,6 +1,6 @@
 package com.nagabolkka.backend.domain.user.entity;
 
-import com.nagabolkka.backend.global.common.BaseTimeEntity;
+import com.nagabolkka.backend.global.common.BaseEntity;
 import com.nagabolkka.backend.global.common.Difficulty;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
 @Entity
 @Table(name = "users") // user 는 H2 · MySQL 예약어라 users 로
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class User extends BaseTimeEntity {
+public class User extends BaseEntity {
 
     public static final String DEFAULT_NICKNAME = "탐험가";
     private static final int MAX_NICKNAME_LENGTH = 30;
@@ -30,11 +30,7 @@ public class User extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** 카카오 회원번호 */
-    @Column(nullable = false, unique = true)
-    private Long kakaoId;
-
-    /** 표시 이름 (가입 때 변환해서 저장) */
+    // 표시 이름 (가입 때 변환해서 저장)
     @Column(nullable = false, length = MAX_NICKNAME_LENGTH)
     private String nickname;
 
@@ -42,10 +38,10 @@ public class User extends BaseTimeEntity {
     @Column(nullable = false, length = 10)
     private Role role;
 
-    /** 시작 체크 점수. null 이면 아직 온보딩 전 */
+    // 시작 체크 점수 -> null 이면 아직 온보딩 전
     private Integer startScore;
 
-    /** 다음 날 미션 난이도 */
+    // 다음 날 미션 난이도
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
     private Difficulty difficulty;
@@ -53,23 +49,24 @@ public class User extends BaseTimeEntity {
     @Column(nullable = false)
     private boolean shareWithAgency;
 
-    @Column(nullable = false)
-    private boolean plusInterested;
-
     private LocalDateTime lastActiveAt;
 
-    /** 카카오 첫 로그인 = 가입. 가입 시각(created_at) = 필수 약관 동의 시각 */
-    public static User createKakaoUser(Long kakaoId, String kakaoNickname) {
+    // 카카오 첫 로그인 = 가입. 회원번호는 SignUpService 가 user_private_info 에 따로 저장
+    public static User createKakaoUser(String kakaoNickname) {
         User user = new User();
-        user.kakaoId = kakaoId;
         user.nickname = toDisplayName(kakaoNickname);
         user.role = Role.USER;
         user.difficulty = Difficulty.EASY;
         user.shareWithAgency = false;
-        user.plusInterested = false;
         return user;
     }
 
+    /**
+     * 카카오 닉네임 → 표시 이름 (처음 가입할 때만 적용)
+     *  - 한글 3글자면 첫 글자(성)를 뗀다 : 홍윤지 → 윤지
+     *  - 그 외는 그대로 (최대 30자)
+     *  - 미동의 · 빈 값 → "탐험가"
+     */
     static String toDisplayName(String kakaoNickname) {
         if (kakaoNickname == null || kakaoNickname.isBlank()) {
             return DEFAULT_NICKNAME;
@@ -85,7 +82,7 @@ public class User extends BaseTimeEntity {
                 .collect(Collectors.joining());
     }
 
-    /* 온보딩 완료 = 시작 체크 점수가 저장됨 */
+    /** 온보딩 완료 = 시작 체크 점수가 저장됨 */
     public boolean isOnboardingCompleted() {
         return startScore != null;
     }
