@@ -20,14 +20,16 @@ public record KakaoLoginRequest(
 
     public record Consents(
             @Schema(description = "서비스 이용약관 (필수)", example = "true") Boolean terms,
-            @Schema(description = "개인정보 처리방침 (필수)", example = "true") Boolean privacy
+            @Schema(description = "개인정보 수집 · 이용 (필수)", example = "true") Boolean privacy,
+            @Schema(description = "위치기반서비스 이용약관 (필수)", example = "true") Boolean location
     ) {
     }
 
-    /** 필수 항목(terms · privacy) 에 모두 동의했는지 */
+    // 필수 항목(terms · privacy · location) 에 모두 동의했는지
     public boolean agreedToRequiredTerms() {
         return consents != null
                 && Boolean.TRUE.equals(consents.terms())
-                && Boolean.TRUE.equals(consents.privacy());
+                && Boolean.TRUE.equals(consents.privacy())
+                && Boolean.TRUE.equals(consents.location());
     }
 }

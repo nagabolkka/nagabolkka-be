@@ -3,20 +3,20 @@ package com.nagabolkka.backend.domain.auth.service;
 import com.nagabolkka.backend.domain.auth.dto.KakaoLoginRequest;
 import com.nagabolkka.backend.domain.auth.dto.KakaoLoginRequest.Consents;
 import com.nagabolkka.backend.domain.auth.dto.LoginResponse;
+import com.nagabolkka.backend.domain.auth.dto.TokenResponse;
 import com.nagabolkka.backend.domain.auth.kakao.KakaoOAuthClient;
 import com.nagabolkka.backend.domain.auth.kakao.KakaoProperties;
 import com.nagabolkka.backend.domain.auth.kakao.KakaoUserInfo;
 import com.nagabolkka.backend.domain.user.entity.Role;
 import com.nagabolkka.backend.domain.user.entity.User;
 import com.nagabolkka.backend.domain.user.repository.UserRepository;
+import com.nagabolkka.backend.global.crypto.HashUtil;
 import com.nagabolkka.backend.global.exception.CustomException;
 import com.nagabolkka.backend.global.exception.ErrorCode;
-import com.nagabolkka.backend.global.security.JwtProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -35,24 +35,37 @@ class AuthServiceTest {
 
     private static final String REDIRECT_URI = "http://localhost:5173/oauth/kakao";
     private static final Long KAKAO_ID = 1234567890L;
+    private static final String KAKAO_ID_HASH = "a".repeat(64);
+    private static final KakaoUserInfo KAKAO_USER = new KakaoUserInfo(KAKAO_ID, "홍윤지");
+    private static final TokenResponse TOKENS = new TokenResponse("access-token", 1800, "refresh-token");
 
     @Mock
     KakaoOAuthClient kakaoOAuthClient;
     @Mock
     UserRepository userRepository;
     @Mock
-    JwtProvider jwtProvider;
+    HashUtil hashUtil;
+    @Mock
+    SignUpService signUpService;
+    @Mock
+    TokenService tokenService;
 
     AuthService authService;
 
     @BeforeEach
     void setUp() {
         KakaoProperties kakaoProperties = new KakaoProperties("rest-key", "", List.of(REDIRECT_URI));
-        authService = new AuthService(kakaoOAuthClient, userRepository, jwtProvider, kakaoProperties);
+        authService = new AuthService(kakaoOAuthClient, userRepository, hashUtil, signUpService, tokenService, kakaoProperties);
     }
 
     private KakaoLoginRequest request(String redirectUri, Consents consents) {
         return new KakaoLoginRequest("auth-code", redirectUri, consents);
+    }
+
+    private void givenKakaoUser(Optional<User> existing) {
+        given(kakaoOAuthClient.getUserInfo("auth-code", REDIRECT_URI)).willReturn(KAKAO_USER);
+        given(hashUtil.hmac(String.valueOf(KAKAO_ID))).willReturn(KAKAO_ID_HASH);
+        given(userRepository.findByKakaoIdHash(KAKAO_ID_HASH)).willReturn(existing);
     }
 
     @Test
@@ -66,48 +79,49 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("신규 가입인데 필수 약관 미동의 → TERMS_REQUIRED, 저장하지 않음")
-    void newUser_withoutConsents() {
-        given(kakaoOAuthClient.getUserInfo("auth-code", REDIRECT_URI)).willReturn(new KakaoUserInfo(KAKAO_ID, "홍윤지"));
-        given(userRepository.findByKakaoId(KAKAO_ID)).willReturn(Optional.empty());
+    @DisplayName("신규 가입인데 위치 약관 미동의 → TERMS_REQUIRED, 가입하지 않음")
+    void newUser_withoutLocationConsent() {
+        givenKakaoUser(Optional.empty());
 
-        assertThatThrownBy(() -> authService.kakaoLogin(request(REDIRECT_URI, new Consents(true, false))))
+        assertThatThrownBy(() -> authService.kakaoLogin(request(REDIRECT_URI, new Consents(true, true, false))))
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.TERMS_REQUIRED);
 
-        then(userRepository).should(never()).save(any());
+        then(signUpService).should(never()).signUp(any(), any());
+        then(tokenService).should(never()).issue(any());
     }
 
     @Test
-    @DisplayName("신규 가입 → 닉네임 변환해서 저장, isNewUser = true, onboardingCompleted = false")
+    @DisplayName("신규 가입 → 해시로 가입, Access · Refresh 응답, isNewUser = true")
     void newUser_signUp() {
-        given(kakaoOAuthClient.getUserInfo("auth-code", REDIRECT_URI)).willReturn(new KakaoUserInfo(KAKAO_ID, "홍윤지"));
-        given(userRepository.findByKakaoId(KAKAO_ID)).willReturn(Optional.empty());
-        given(jwtProvider.createAccessToken(any(), any())).willReturn("jwt-token");
+        givenKakaoUser(Optional.empty());
+        User newUser = User.createKakaoUser("홍윤지");
+        given(signUpService.signUp(KAKAO_USER, KAKAO_ID_HASH)).willReturn(newUser);
+        given(tokenService.issue(newUser)).willReturn(TOKENS);
 
-        LoginResponse response = authService.kakaoLogin(request(REDIRECT_URI, new Consents(true, true)));
+        LoginResponse response = authService.kakaoLogin(request(REDIRECT_URI, new Consents(true, true, true)));
 
-        ArgumentCaptor<User> saved = ArgumentCaptor.forClass(User.class);
-        then(userRepository).should().save(saved.capture());
-        assertThat(saved.getValue().getNickname()).isEqualTo("윤지");
-        assertThat(saved.getValue().getLastActiveAt()).isNotNull();
+        then(signUpService).should().signUp(KAKAO_USER, KAKAO_ID_HASH);
+        assertThat(newUser.getLastActiveAt()).isNotNull();
 
-        assertThat(response.accessToken()).isEqualTo("jwt-token");
+        assertThat(response.accessToken()).isEqualTo("access-token");
+        assertThat(response.accessTokenExpiresIn()).isEqualTo(1800);
+        assertThat(response.refreshToken()).isEqualTo("refresh-token");
         assertThat(response.isNewUser()).isTrue();
         assertThat(response.onboardingCompleted()).isFalse();
         assertThat(response.role()).isEqualTo(Role.USER);
     }
 
     @Test
-    @DisplayName("기존 회원 → consents 없어도 로그인, 닉네임 덮어쓰지 않음")
+    @DisplayName("기존 회원 → consents 없어도 로그인, 가입하지 않음, 닉네임 덮어쓰지 않음")
     void existingUser_login() {
-        User existing = User.createKakaoUser(KAKAO_ID, "윤지"); // 사용자가 바꿔 둔 이름이라고 가정
-        given(kakaoOAuthClient.getUserInfo("auth-code", REDIRECT_URI)).willReturn(new KakaoUserInfo(KAKAO_ID, "홍윤지"));
-        given(userRepository.findByKakaoId(KAKAO_ID)).willReturn(Optional.of(existing));
-        given(jwtProvider.createAccessToken(any(), any())).willReturn("jwt-token");
+        User existing = User.createKakaoUser("윤지"); // 사용자가 바꿔 둔 이름이라고 가정
+        givenKakaoUser(Optional.of(existing));
+        given(tokenService.issue(existing)).willReturn(TOKENS);
 
         LoginResponse response = authService.kakaoLogin(request(REDIRECT_URI, null));
 
+        then(signUpService).should(never()).signUp(any(), any());
         assertThat(response.isNewUser()).isFalse();
         assertThat(existing.getNickname()).isEqualTo("윤지");
     }
@@ -118,7 +132,7 @@ class AuthServiceTest {
         given(kakaoOAuthClient.getUserInfo("auth-code", REDIRECT_URI))
                 .willThrow(new CustomException(ErrorCode.KAKAO_LOGIN_FAILED));
 
-        assertThatThrownBy(() -> authService.kakaoLogin(request(REDIRECT_URI, new Consents(true, true))))
+        assertThatThrownBy(() -> authService.kakaoLogin(request(REDIRECT_URI, new Consents(true, true, true))))
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.KAKAO_LOGIN_FAILED);
     }

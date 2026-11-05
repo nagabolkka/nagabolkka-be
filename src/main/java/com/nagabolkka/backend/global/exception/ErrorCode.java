@@ -13,10 +13,14 @@ public enum ErrorCode {
     TERMS_REQUIRED(HttpStatus.BAD_REQUEST, "필수 약관에 동의해 주세요"),
     INVALID_REDIRECT_URI(HttpStatus.BAD_REQUEST, "허용되지 않은 redirectUri 예요"),
     SPLIT_STEP_REQUIRED(HttpStatus.BAD_REQUEST, "한 단계 이상 해낸 뒤 완료할 수 있어요"),
+    PLUS_CUSTOM_PRICE_REQUIRED(HttpStatus.BAD_REQUEST, "원하는 가격을 0 ~ 50,000원 사이로 적어 주세요"),
 
     // 401
     KAKAO_LOGIN_FAILED(HttpStatus.UNAUTHORIZED, "카카오 로그인에 실패했어요. 다시 시도해 주세요"),
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "다시 로그인해 주세요"),
+    AUTH_TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "로그인이 만료됐어요"),
+    AUTH_INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "다시 로그인해 주세요"),
+    AUTH_REFRESH_EXPIRED(HttpStatus.UNAUTHORIZED, "로그인이 만료됐어요. 다시 로그인해 주세요"),
 
     // 403
     FORBIDDEN(HttpStatus.FORBIDDEN, "접근 권한이 없어요"),

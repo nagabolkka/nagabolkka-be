@@ -20,7 +20,8 @@ public class SecurityErrorHandler implements AuthenticationEntryPoint, AccessDen
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response,
                          AuthenticationException authException) throws IOException {
-        write(response, ErrorCode.UNAUTHORIZED);
+        Object code = request.getAttribute(JwtAuthenticationFilter.AUTH_ERROR_ATTRIBUTE);
+        write(response, code instanceof ErrorCode errorCode ? errorCode : ErrorCode.UNAUTHORIZED);
     }
 
     @Override

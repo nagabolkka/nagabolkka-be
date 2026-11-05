@@ -32,9 +32,14 @@ kakao:
     - http://localhost:5173/oauth/kakao
     - https://nagabolkka.netlify.app/oauth/kakao
 jwt:
-  # 운영은 application-prod.yaml 에서 JWT_SECRET 필수
+  # 로컬 개발용 기본값 (32자 이상). 운영은 application-prod.yaml 에서 JWT_SECRET 필수
   secret: ${JWT_SECRET:local-dev-only-secret-key-change-me-0123456789}
-  access-token-expiration: 7d
+  access-token-expiration: 30m
+  refresh-token-expiration: 14d
+crypto:
+  # 로컬 개발용 기본값. 운영은 application-prod.yaml 에서 필수
+  hash-secret: ${HASH_SECRET:local-dev-only-hash-secret-0123456789}
+  aes-key: ${AES_KEY:bG9jYWwtZGV2LW9ubHktYWVzLWtleS0zMmJ5dGVzISE=}
 kma:
   service-key: ${KMA_SERVICE_KEY:}
 openai:

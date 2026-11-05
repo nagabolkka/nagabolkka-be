@@ -44,9 +44,8 @@ class UserTest {
     @Test
     @DisplayName("가입 직후 기본값 : USER · EASY · 온보딩 전")
     void createKakaoUser_defaults() {
-        User user = User.createKakaoUser(12345L, "홍윤지");
+        User user = User.createKakaoUser("홍윤지");
 
-        assertThat(user.getKakaoId()).isEqualTo(12345L);
         assertThat(user.getNickname()).isEqualTo("윤지");
         assertThat(user.getRole()).isEqualTo(Role.USER);
         assertThat(user.getDifficulty()).isEqualTo(Difficulty.EASY);

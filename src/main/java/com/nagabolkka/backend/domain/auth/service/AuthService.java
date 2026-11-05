@@ -2,14 +2,15 @@ package com.nagabolkka.backend.domain.auth.service;
 
 import com.nagabolkka.backend.domain.auth.dto.KakaoLoginRequest;
 import com.nagabolkka.backend.domain.auth.dto.LoginResponse;
+import com.nagabolkka.backend.domain.auth.dto.TokenResponse;
 import com.nagabolkka.backend.domain.auth.kakao.KakaoOAuthClient;
 import com.nagabolkka.backend.domain.auth.kakao.KakaoProperties;
 import com.nagabolkka.backend.domain.auth.kakao.KakaoUserInfo;
 import com.nagabolkka.backend.domain.user.entity.User;
 import com.nagabolkka.backend.domain.user.repository.UserRepository;
+import com.nagabolkka.backend.global.crypto.HashUtil;
 import com.nagabolkka.backend.global.exception.CustomException;
 import com.nagabolkka.backend.global.exception.ErrorCode;
-import com.nagabolkka.backend.global.security.JwtProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -22,7 +23,9 @@ public class AuthService {
 
     private final KakaoOAuthClient kakaoOAuthClient;
     private final UserRepository userRepository;
-    private final JwtProvider jwtProvider;
+    private final HashUtil hashUtil;
+    private final SignUpService signUpService;
+    private final TokenService tokenService;
     private final KakaoProperties kakaoProperties;
 
     public LoginResponse kakaoLogin(KakaoLoginRequest request) {
@@ -34,25 +37,34 @@ public class AuthService {
         // 2) 인가 코드 → 카카오 사용자 정보 (실패 시 401 KAKAO_LOGIN_FAILED)
         KakaoUserInfo kakaoUser = kakaoOAuthClient.getUserInfo(request.code(), request.redirectUri());
 
-        // 3) 기존 회원이면 로그인, 없으면 가입
-        Optional<User> existingUser = userRepository.findByKakaoId(kakaoUser.kakaoId());
+        // 3) 회원번호 해시로 조회 → 없으면 가입
+        String kakaoIdHash = hashUtil.hmac(String.valueOf(kakaoUser.kakaoId()));
+        Optional<User> existingUser = userRepository.findByKakaoIdHash(kakaoIdHash);
         boolean isNewUser = existingUser.isEmpty();
-        User user = existingUser.orElseGet(() -> signUp(kakaoUser, request));
+        User user = existingUser.orElseGet(() -> signUp(kakaoUser, kakaoIdHash, request));
 
-        // 4) 마지막 활동 시각 갱신 후 저장 (신규면 INSERT, 기존이면 UPDATE)
+        // 4) 마지막 활동 시각 갱신
         user.updateLastActiveAt(LocalDateTime.now());
         userRepository.save(user);
 
-        // 5) JWT 발급
-        String accessToken = jwtProvider.createAccessToken(user.getId(), user.getRole());
-        return new LoginResponse(accessToken, isNewUser, user.isOnboardingCompleted(), user.getRole());
+        // 5) Access + Refresh 발급
+        TokenResponse tokens = tokenService.issue(user);
+        return LoginResponse.of(tokens, isNewUser, user);
     }
 
-    /** 신규 가입 : 필수 약관 동의 확인 → 닉네임 변환해서 생성 (기존 회원은 consents 를 보지 않는다) */
-    private User signUp(KakaoUserInfo kakaoUser, KakaoLoginRequest request) {
+    public TokenResponse refresh(String refreshToken) {
+        return tokenService.rotate(refreshToken);
+    }
+
+    public void logout(String refreshToken) {
+        tokenService.logout(refreshToken);
+    }
+
+    // 신규 가입 : 필수 약관(terms · privacy · location) 확인
+    private User signUp(KakaoUserInfo kakaoUser, String kakaoIdHash, KakaoLoginRequest request) {
         if (!request.agreedToRequiredTerms()) {
             throw new CustomException(ErrorCode.TERMS_REQUIRED);
         }
-        return User.createKakaoUser(kakaoUser.kakaoId(), kakaoUser.nickname());
+        return signUpService.signUp(kakaoUser, kakaoIdHash);
     }
 }
