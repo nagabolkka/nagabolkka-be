@@ -6,8 +6,11 @@ on:
     branches: [main]
     paths: ['.github/workflows/logs.yml']
 
+env:
+  MY_IP: "114.202.215.111"
+
 jobs:
-  logs:
+  open-ssh:
     runs-on: ubuntu-latest
     steps:
       - uses: aws-actions/configure-aws-credentials@v4
@@ -16,21 +19,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-southeast-2
 
-      - name: 러너 IP 임시 허용
+      - name: 내 IP SSH 허용
         run: |
-          IP=$(curl -s https://checkip.amazonaws.com)
-          echo "IP=$IP" >> $GITHUB_ENV
           aws ec2 authorize-security-group-ingress --group-id ${{ secrets.EC2_SG_ID }} \
-            --protocol tcp --port 22 --cidr $IP/32
-
-      - name: 로그 확인
-        run: |
-          echo "${{ secrets.EC2_SSH_KEY }}" > key.pem && chmod 600 key.pem
-          ssh -o StrictHostKeyChecking=no -i key.pem ubuntu@${{ secrets.EC2_HOST }} \
-            'cd ~/nagabolkka-be && docker compose ps && docker compose logs app --tail 120 && free -h'
-
-      - name: 임시 규칙 제거
-        if: always()
-        run: |
-          aws ec2 revoke-security-group-ingress --group-id ${{ secrets.EC2_SG_ID }} \
-            --protocol tcp --port 22 --cidr $IP/32
+            --protocol tcp --port 22 --cidr $MY_IP/32 || echo "이미 허용돼 있음"
