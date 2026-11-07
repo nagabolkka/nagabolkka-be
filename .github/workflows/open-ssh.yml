@@ -2,10 +2,9 @@ name: open-ssh
 
 on:
   workflow_dispatch:
-    inputs:
-      my_ip:
-        description: "내 IP (Mac 터미널에서 curl -s https://checkip.amazonaws.com)"
-        required: true
+
+env:
+  MY_IP: "114.202.215.111"
 
 jobs:
   open-ssh:
@@ -20,4 +19,4 @@ jobs:
       - name: 내 IP SSH 허용
         run: |
           aws ec2 authorize-security-group-ingress --group-id ${{ secrets.EC2_SG_ID }} \
-            --protocol tcp --port 22 --cidr ${{ inputs.my_ip }}/32 || echo "이미 허용돼 있음"
+            --protocol tcp --port 22 --cidr $MY_IP/32 || echo "이미 허용돼 있음"
