@@ -16,6 +16,9 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-southeast-2
 
+      - name: 계정 ID 확인
+        run: aws sts get-caller-identity --query Account --output text
+
       - name: 내 IP SSH 허용
         run: |
           aws ec2 authorize-security-group-ingress --group-id ${{ secrets.EC2_SG_ID }} \
