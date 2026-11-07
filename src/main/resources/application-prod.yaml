@@ -21,7 +21,7 @@ server:
   forward-headers-strategy: framework
 
 cors:
-  allowed-origins: https://nagabolkka.netlify.app
+  allowed-origins: https://nagabolkka.netlify.app, https://nagabolkka.vercel.app
 
 jwt:
   # 기본값 없음 → 서버 .env 에 JWT_SECRET 이 없으면 앱이 뜨지 않는다
