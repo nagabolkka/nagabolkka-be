@@ -31,6 +31,7 @@ kakao:
   allowed-redirect-uris:
     - http://localhost:5173/oauth/kakao
     - https://nagabolkka.netlify.app/oauth/kakao
+    - https://nagabolkka.vercel.app/oauth/kakao
 jwt:
   # 로컬 개발용 기본값 (32자 이상). 운영은 application-prod.yaml 에서 JWT_SECRET 필수
   secret: ${JWT_SECRET:local-dev-only-secret-key-change-me-0123456789}
