@@ -7,6 +7,10 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
+import com.nagabolkka.backend.domain.district.entity.District;
+import com.nagabolkka.backend.domain.goal.entity.Goal;
+import com.nagabolkka.backend.domain.region.entity.Region;
+import java.math.BigDecimal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -50,5 +54,22 @@ class UserTest {
         assertThat(user.getRole()).isEqualTo(Role.USER);
         assertThat(user.getDifficulty()).isEqualTo(Difficulty.EASY);
         assertThat(user.isOnboardingCompleted()).isFalse();
+    }
+
+    @Test
+    @DisplayName("시작 체크 결과를 저장하면 온보딩 완료")
+    void completeOnboarding() {
+        User user = User.createKakaoUser("홍윤지");
+        Region region = Region.of(1, "시작의 방", "집 안", "빛의 조각", "#E8C06A", "a.png", "b.png");
+        Goal goal = Goal.of("JOB", "취업");
+        District district = District.of("성북구", new BigDecimal("37.5894"), new BigDecimal("127.0167"), 61, 127);
+
+        user.completeOnboarding(3, region, goal, district);
+
+        assertThat(user.isOnboardingCompleted()).isTrue();
+        assertThat(user.getStartScore()).isEqualTo(3);
+        assertThat(user.getCurrentRegion()).isSameAs(region);
+        assertThat(user.getCurrentGoal()).isSameAs(goal);
+        assertThat(user.getDistrict()).isSameAs(district);
     }
 }

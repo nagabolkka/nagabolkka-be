@@ -1,14 +1,20 @@
 package com.nagabolkka.backend.domain.user.entity;
 
+import com.nagabolkka.backend.domain.district.entity.District;
+import com.nagabolkka.backend.domain.goal.entity.Goal;
+import com.nagabolkka.backend.domain.region.entity.Region;
 import com.nagabolkka.backend.global.common.BaseEntity;
 import com.nagabolkka.backend.global.common.Difficulty;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -38,8 +44,23 @@ public class User extends BaseEntity {
     @Column(nullable = false, length = 10)
     private Role role;
 
-    // 시작 체크 점수 -> null 이면 아직 온보딩 전
+    // 시작 체크 점수 0~24 -> null 이면 아직 온보딩 전
     private Integer startScore;
+
+    // 현재 머무는 지역 (= 계단) · 온보딩 전 null
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "current_region_id")
+    private Region currentRegion;
+
+    // 사회 연결 목표 · 온보딩 전 null
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "current_goal_id")
+    private Goal currentGoal;
+
+    // 시작 체크 때 고른 구 · 위치 권한 없을 때 대체 기준 · 날씨 격자
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "district_id")
+    private District district;
 
     // 다음 날 미션 난이도
     @Enumerated(EnumType.STRING)
@@ -61,12 +82,6 @@ public class User extends BaseEntity {
         return user;
     }
 
-    /**
-     * 카카오 닉네임 → 표시 이름 (처음 가입할 때만 적용)
-     *  - 한글 3글자면 첫 글자(성)를 뗀다 : 홍윤지 → 윤지
-     *  - 그 외는 그대로 (최대 30자)
-     *  - 미동의 · 빈 값 → "탐험가"
-     */
     static String toDisplayName(String kakaoNickname) {
         if (kakaoNickname == null || kakaoNickname.isBlank()) {
             return DEFAULT_NICKNAME;
@@ -82,9 +97,17 @@ public class User extends BaseEntity {
                 .collect(Collectors.joining());
     }
 
-    /** 온보딩 완료 = 시작 체크 점수가 저장됨 */
+    // 온보딩 완료 = 시작 체크 점수가 저장됨
     public boolean isOnboardingCompleted() {
         return startScore != null;
+    }
+
+    // 시작 체크 결과 저장
+    public void completeOnboarding(int startScore, Region startRegion, Goal goal, District district) {
+        this.startScore = startScore;
+        this.currentRegion = startRegion;
+        this.currentGoal = goal;
+        this.district = district;
     }
 
     public void updateLastActiveAt(LocalDateTime now) {
