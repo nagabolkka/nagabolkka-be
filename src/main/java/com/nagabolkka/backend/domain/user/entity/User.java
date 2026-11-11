@@ -113,4 +113,9 @@ public class User extends BaseEntity {
     public void updateLastActiveAt(LocalDateTime now) {
         this.lastActiveAt = now;
     }
+
+    // 마이페이지 목표 변경
+    public void changeGoal(Goal goal) {
+        this.currentGoal = goal;
+    }
 }
