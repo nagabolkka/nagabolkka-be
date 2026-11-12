@@ -5,6 +5,7 @@ import com.nagabolkka.backend.domain.mission.entity.MissionStep;
 import com.nagabolkka.backend.domain.mission.repository.MissionRepository;
 import com.nagabolkka.backend.domain.mission.repository.MissionStepRepository;
 import com.nagabolkka.backend.domain.piece.repository.PieceAcquisitionRepository;
+import com.nagabolkka.backend.domain.quest.dto.QuestActionRequest;
 import com.nagabolkka.backend.domain.quest.dto.TodayQuestResponse;
 import com.nagabolkka.backend.domain.quest.entity.DailyQuest;
 import com.nagabolkka.backend.domain.quest.repository.DailyQuestRepository;
@@ -21,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -42,21 +44,31 @@ public class QuestService {
     // 오늘 퀘스트 : 있으면 그대로, 없으면 이때 배정 (하루 1개 · 멱등)
     @Transactional
     public TodayQuestResponse getToday(Long userId) {
-        // 홈 · 퀘스트가 동시에 불려도 하나만 배정되도록 사용자 행을 잠근다
-        User user = userRepository.findByIdForUpdate(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.UNAUTHORIZED));
+        User user = lockOnboardedUser(userId);
+        DailyQuest quest = findOrAssign(user, LocalDate.now(clock));
+        return toResponse(quest);
+    }
 
-        if (!user.isOnboardingCompleted()) {
-            throw new CustomException(ErrorCode.ONBOARDING_REQUIRED);
+    // 오늘 퀘스트 동작 : 수락 · 쪼개기 · 바꾸기 · 오늘은 쉬기
+    @Transactional
+    public TodayQuestResponse act(Long userId, QuestActionRequest request) {
+        // 버튼 연타 · 두 화면 동시 요청이 겹치지 않도록 사용자 행을 잠근다
+        User user = lockOnboardedUser(userId);
+        DailyQuest quest = findOrAssign(user, LocalDate.now(clock));
+        LocalDateTime now = LocalDateTime.now(clock);
+
+        switch (request.type()) {
+            case ACCEPT -> quest.accept(now);
+            case SPLIT -> quest.splitUp(now);
+            case CHANGE -> {
+                quest.checkChangeable(); // 끝났거나 2번 다 썼으면 미션 조회 전에 409
+                List<Mission> candidates = missionRepository.findActiveByRegionIds(List.of(quest.getRegion().getId()));
+                quest.change(questAssigner.pickChange(quest.getMission(), candidates));
+            }
+            case SKIP -> quest.skip();
         }
 
-        DailyQuest quest = findOrAssign(user, LocalDate.now(clock));
-
-        List<MissionStep> steps = quest.isSplit()
-                ? missionStepRepository.findByMissionIdOrderByStepNoAsc(quest.getMission().getId())
-                : List.of();
-
-        return TodayQuestResponse.of(quest, steps);
+        return toResponse(quest);
     }
 
     // 오늘 퀘스트 있으면 그대로, 없으면 배정 — 홈에서도 사용
@@ -65,6 +77,25 @@ public class QuestService {
     public DailyQuest findOrAssign(User user, LocalDate today) {
         return dailyQuestRepository.findToday(user.getId(), today)
                 .orElseGet(() -> assign(user, today));
+    }
+
+    // 홈 · 퀘스트가 동시에 불려도 하나만 배정되도록 사용자 행을 잠근다
+    private User lockOnboardedUser(Long userId) {
+        User user = userRepository.findByIdForUpdate(userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.UNAUTHORIZED));
+
+        if (!user.isOnboardingCompleted()) {
+            throw new CustomException(ErrorCode.ONBOARDING_REQUIRED);
+        }
+        return user;
+    }
+
+    // 쪼갠 퀘스트만 단계 조회
+    private TodayQuestResponse toResponse(DailyQuest quest) {
+        List<MissionStep> steps = quest.isSplit()
+                ? missionStepRepository.findByMissionIdOrderByStepNoAsc(quest.getMission().getId())
+                : List.of();
+        return TodayQuestResponse.of(quest, steps);
     }
 
     private DailyQuest assign(User user, LocalDate today) {

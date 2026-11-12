@@ -21,6 +21,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
+import com.nagabolkka.backend.global.exception.CustomException;
+import com.nagabolkka.backend.global.exception.ErrorCode;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -105,5 +107,65 @@ public class DailyQuest extends BaseEntity {
 
     public int getChangeRemaining() {
         return MAX_CHANGE - changeCount;
+    }
+
+    // 수락 → 진행 중 (이미 진행 중이면 그대로 · 버튼 두 번 눌러도 OK)
+    public void accept(LocalDateTime now) {
+        checkNotDone();
+        if (status == QuestStatus.ASSIGNED) {
+            status = QuestStatus.IN_PROGRESS;
+            acceptedAt = now;
+        }
+    }
+
+    // 쪼개기 (수락 포함) — 이미 쪼갰으면 그대로
+    public void splitUp(LocalDateTime now) {
+        accept(now);
+        split = true;
+    }
+
+    // 바꾸기 → 새 미션 · 처음 상태로 · 횟수 +1
+    public void change(Mission newMission) {
+        checkChangeable();
+        replaceMission(newMission);
+        changeCount++;
+    }
+
+    // 오늘은 쉬기 (복원도 · 조각 그대로)
+    public void skip() {
+        checkNotDone();
+        status = QuestStatus.SKIPPED;
+    }
+
+    // 끝난 퀘스트 = 완료 · 쉬기
+    public boolean isDone() {
+        return status == QuestStatus.COMPLETED || status == QuestStatus.SKIPPED;
+    }
+
+    // 바꾸기 전에 확인 (새 미션 고르기 전에 부른다)
+    public void checkChangeable() {
+        checkNotDone();
+        if (changeCount >= MAX_CHANGE) {
+            throw new CustomException(ErrorCode.QUEST_CHANGE_LIMIT);
+        }
+    }
+
+    private void checkNotDone() {
+        if (isDone()) {
+            throw new CustomException(ErrorCode.QUEST_ALREADY_DONE);
+        }
+    }
+
+    // 미션 교체 : 처음 배정된 것처럼 되돌린다
+    private void replaceMission(Mission newMission) {
+        this.mission = newMission;
+        this.region = newMission.getRegion();
+        this.source = QuestSource.AUTO;
+        this.status = QuestStatus.ASSIGNED;
+        this.placeName = newMission.getPlaceName();
+        this.distanceM = newMission.isIndoor() ? 0 : null;
+        this.split = false;
+        this.splitDoneSteps = 0;
+        this.acceptedAt = null;
     }
 }
