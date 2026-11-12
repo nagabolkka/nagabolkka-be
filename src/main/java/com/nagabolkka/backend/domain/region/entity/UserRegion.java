@@ -56,14 +56,19 @@ public class UserRegion extends BaseEntity {
     // ACTIVE 가 된 시각
     private LocalDateTime unlockedAt;
 
-    // 시작 체크 : 출발 지역만 ACTIVE, 나머지 LOCKED
-    public static UserRegion create(User user, Region region, boolean isStartRegion, LocalDateTime now) {
+    // 시작 체크 : 출발 계단 아래 PASSED · 출발 계단 ACTIVE · 출발 계단 위 LOCKED (OnboardingService 가 상태를 정함)
+    public static UserRegion create(User user, Region region, RegionStatus status, LocalDateTime now) {
         UserRegion userRegion = new UserRegion();
         userRegion.user = user;
         userRegion.region = region;
-        userRegion.status = isStartRegion ? RegionStatus.ACTIVE : RegionStatus.LOCKED;
+        userRegion.status = status;
         userRegion.completedCount = 0;
-        userRegion.unlockedAt = isStartRegion ? now : null;
+        userRegion.unlockedAt = status == RegionStatus.ACTIVE ? now : null;
         return userRegion;
+    }
+
+    // 복원도 0~100 (퀘스트 완료 1회당 20%, 최대 100)
+    public int getRestoration() {
+        return Math.min(completedCount, 5) * 20;
     }
 }

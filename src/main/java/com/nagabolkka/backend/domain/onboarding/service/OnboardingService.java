@@ -7,6 +7,7 @@ import com.nagabolkka.backend.domain.goal.repository.GoalRepository;
 import com.nagabolkka.backend.domain.onboarding.dto.StartCheckRequest;
 import com.nagabolkka.backend.domain.onboarding.dto.StartCheckResponse;
 import com.nagabolkka.backend.domain.region.entity.Region;
+import com.nagabolkka.backend.domain.region.entity.RegionStatus;
 import com.nagabolkka.backend.domain.region.entity.UserRegion;
 import com.nagabolkka.backend.domain.region.repository.RegionRepository;
 import com.nagabolkka.backend.domain.region.repository.UserRegionRepository;
@@ -58,15 +59,23 @@ public class OnboardingService {
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("지역 시드가 없어요: " + startStageNo)); // 시드 누락 = 버그 → 500
 
-        // 5) 지역 5행 : 출발 ACTIVE · 나머지 LOCKED
+        // 5) 지역 5행 : 출발 아래 PASSED · 출발 ACTIVE · 위 LOCKED
         LocalDateTime now = LocalDateTime.now();
         userRegionRepository.saveAll(regions.stream()
-                .map(region -> UserRegion.create(user, region, region == startRegion, now))
+                .map(region -> UserRegion.create(user, region, statusOf(region, startRegion), now))
                 .toList());
 
         // 6) 사용자에 결과 저장 (변경 감지로 UPDATE)
         user.completeOnboarding(score, startRegion, goal, district);
 
         return StartCheckResponse.of(score, startRegion, goal);
+    }
+
+    // 지나온 계단은 PASSED → 쉬운 날 그 계단 미션도 배정
+    private static RegionStatus statusOf(Region region, Region startRegion) {
+        if (region.getStageNo() < startRegion.getStageNo()) {
+            return RegionStatus.PASSED;
+        }
+        return region == startRegion ? RegionStatus.ACTIVE : RegionStatus.LOCKED;
     }
 }

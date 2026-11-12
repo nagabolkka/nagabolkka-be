@@ -46,6 +46,8 @@ class OnboardingServiceTest {
 
     // 합 10 → 3계단 (동네)
     private static final List<Integer> ANSWERS_SCORE_10 = List.of(2, 1, 0, 1, 0, 1, 2, 3);
+    // 합 2 → 1계단 (집 안)
+    private static final List<Integer> ANSWERS_SCORE_2 = List.of(0, 0, 1, 0, 0, 1, 0, 0);
 
     @Mock
     UserRepository userRepository;
@@ -85,7 +87,7 @@ class OnboardingServiceTest {
     }
 
     @Test
-    @DisplayName("성공 : 점수 10 → 3계단 출발, 지역 5행(3만 ACTIVE), 사용자에 결과 저장")
+    @DisplayName("성공 : 점수 10 → 3계단 출발, 지역 5행(1 · 2 PASSED · 3 ACTIVE · 4 · 5 LOCKED), 사용자에 결과 저장")
     void startCheck_success() {
         given(userRepository.findByIdForUpdate(USER_ID)).willReturn(Optional.of(user));
         given(districtRepository.findById(DISTRICT_ID)).willReturn(Optional.of(district));
@@ -99,14 +101,14 @@ class OnboardingServiceTest {
         assertThat(response.region().stageNo()).isEqualTo(3);
         assertThat(response.goal().name()).isEqualTo("모임");
 
-        // user_regions 5행 : 3계단만 ACTIVE
+        // user_regions 5행 : 지나온 1 · 2 PASSED, 출발 3 ACTIVE, 위 4 · 5 LOCKED
         then(userRegionRepository).should().saveAll(userRegionsCaptor.capture());
         List<UserRegion> saved = userRegionsCaptor.getValue();
         assertThat(saved).hasSize(5);
         assertThat(saved).extracting(UserRegion::getStatus).containsExactly(
-                RegionStatus.LOCKED, RegionStatus.LOCKED, RegionStatus.ACTIVE, RegionStatus.LOCKED, RegionStatus.LOCKED);
-        assertThat(saved.get(2).getUnlockedAt()).isNotNull();
-        assertThat(saved.get(0).getUnlockedAt()).isNull();
+                RegionStatus.PASSED, RegionStatus.PASSED, RegionStatus.ACTIVE, RegionStatus.LOCKED, RegionStatus.LOCKED);
+        assertThat(saved.get(2).getUnlockedAt()).isNotNull();   // ACTIVE 만 열린 시각
+        assertThat(saved.get(0).getUnlockedAt()).isNull();      // PASSED 는 null
 
         // users
         assertThat(user.isOnboardingCompleted()).isTrue();
@@ -114,6 +116,21 @@ class OnboardingServiceTest {
         assertThat(user.getCurrentRegion()).isSameAs(regions.get(2));
         assertThat(user.getCurrentGoal()).isSameAs(goal);
         assertThat(user.getDistrict()).isSameAs(district);
+    }
+
+    @Test
+    @DisplayName("1계단 출발 : 지나온 계단 없음 → 1 ACTIVE · 나머지 LOCKED")
+    void startCheck_stage1_noPassed() {
+        given(userRepository.findByIdForUpdate(USER_ID)).willReturn(Optional.of(user));
+        given(districtRepository.findById(DISTRICT_ID)).willReturn(Optional.of(district));
+        given(goalRepository.findById(GOAL_ID)).willReturn(Optional.of(goal));
+        given(regionRepository.findAllByOrderByStageNoAsc()).willReturn(regions);
+
+        onboardingService.startCheck(USER_ID, request(ANSWERS_SCORE_2));
+
+        then(userRegionRepository).should().saveAll(userRegionsCaptor.capture());
+        assertThat(userRegionsCaptor.getValue()).extracting(UserRegion::getStatus).containsExactly(
+                RegionStatus.ACTIVE, RegionStatus.LOCKED, RegionStatus.LOCKED, RegionStatus.LOCKED, RegionStatus.LOCKED);
     }
 
     @Test

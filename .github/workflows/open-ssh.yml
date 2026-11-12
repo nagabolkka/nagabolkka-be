@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 env:
-  MY_IP: "114.202.215.111"
+  MY_IP: "117.17.142.130"
 
 jobs:
   open-ssh:
