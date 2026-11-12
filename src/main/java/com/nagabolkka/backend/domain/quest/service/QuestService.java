@@ -50,15 +50,21 @@ public class QuestService {
             throw new CustomException(ErrorCode.ONBOARDING_REQUIRED);
         }
 
-        LocalDate today = LocalDate.now(clock);
-        DailyQuest quest = dailyQuestRepository.findToday(userId, today)
-                .orElseGet(() -> assign(user, today));
+        DailyQuest quest = findOrAssign(user, LocalDate.now(clock));
 
         List<MissionStep> steps = quest.isSplit()
                 ? missionStepRepository.findByMissionIdOrderByStepNoAsc(quest.getMission().getId())
                 : List.of();
 
         return TodayQuestResponse.of(quest, steps);
+    }
+
+    // 오늘 퀘스트 있으면 그대로, 없으면 배정 — 홈에서도 사용
+    // 부르는 쪽이 사용자 행을 잠그고 (findByIdForUpdate) 시작 체크 여부를 확인한 뒤 호출
+    @Transactional
+    public DailyQuest findOrAssign(User user, LocalDate today) {
+        return dailyQuestRepository.findToday(user.getId(), today)
+                .orElseGet(() -> assign(user, today));
     }
 
     private DailyQuest assign(User user, LocalDate today) {

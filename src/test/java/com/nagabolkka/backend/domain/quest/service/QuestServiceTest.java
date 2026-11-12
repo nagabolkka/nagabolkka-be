@@ -84,6 +84,7 @@ class QuestServiceTest {
         stage2Easy = mission(stage2, 21L, "집 앞 골목 한 바퀴, 10분 산책", false);
 
         user = User.createKakaoUser("홍윤지");
+        ReflectionTestUtils.setField(user, "id", USER_ID);
         District district = District.of("성북구", new BigDecimal("37.5894"), new BigDecimal("127.0167"), 61, 127);
         // 2계단 출발 → 1계단은 지나온 곳
         user.completeOnboarding(7, stage2, Goal.of("JOB", "취업"), district);

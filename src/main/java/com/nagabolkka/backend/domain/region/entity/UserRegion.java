@@ -66,4 +66,9 @@ public class UserRegion extends BaseEntity {
         userRegion.unlockedAt = status == RegionStatus.ACTIVE ? now : null;
         return userRegion;
     }
+
+    // 복원도 0~100 (퀘스트 완료 1회당 20%, 최대 100)
+    public int getRestoration() {
+        return Math.min(completedCount, 5) * 20;
+    }
 }
