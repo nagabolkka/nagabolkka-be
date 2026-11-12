@@ -30,6 +30,7 @@ public enum ErrorCode {
     NOT_FOUND(HttpStatus.NOT_FOUND, "찾을 수 없어요"),
 
     // 409
+    ONBOARDING_REQUIRED(HttpStatus.CONFLICT, "시작 체크를 먼저 해 주세요"),
     ONBOARDING_ALREADY_DONE(HttpStatus.CONFLICT, "이미 시작 체크를 마쳤어요"),
     QUEST_CHANGE_LIMIT(HttpStatus.CONFLICT, "오늘은 더 바꿀 수 없어요"),
     QUEST_ALREADY_DONE(HttpStatus.CONFLICT, "이미 끝난 퀘스트예요"),
