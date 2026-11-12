@@ -10,4 +10,7 @@ public interface GoalStepRepository extends JpaRepository<GoalStep, Long> {
 
     // 내 목표에서 사용
     List<GoalStep> findByGoalOrderByStepNoAsc(Goal goal);
+
+    // 홈 목표 준비 : 단계 수 (4)
+    long countByGoalId(Long goalId);
 }
