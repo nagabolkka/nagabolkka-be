@@ -74,6 +74,7 @@ GET <http://localhost:8080/api/health>
 | ✨ Feat | 새로운 기능 추가 |
 | 🐛 Fix | 버그 수정 |
 | ♻️ Refactor | 코드 리팩토링 |
+| 🧹 Chore | 기능 변화 없는 정리 작업 (안 쓰는 주소 · 파일 정리 등) |
 | 🔧 Settings | 설정 파일 수정 |
 | ✅ Test | 테스트 코드 추가 및 수정 |
 | ➕ Dependency/Plugin | 라이브러리 추가 |
