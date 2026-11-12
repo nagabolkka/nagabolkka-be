@@ -4,5 +4,6 @@ package com.nagabolkka.backend.domain.region.entity;
 public enum RegionStatus {
     LOCKED,
     ACTIVE,
-    COMPLETED
+    COMPLETED,
+    PASSED,
 }
