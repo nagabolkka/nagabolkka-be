@@ -67,6 +67,11 @@ public class UserRegion extends BaseEntity {
         return userRegion;
     }
 
+    // 퀘스트 완료 1회 (복원도 +20%, 5번 넘어도 복원도는 100% 에서 멈춤)
+    public void addCompletion() {
+        completedCount++;
+    }
+
     // 복원도 0~100 (퀘스트 완료 1회당 20%, 최대 100)
     public int getRestoration() {
         return Math.min(completedCount, 5) * 20;
