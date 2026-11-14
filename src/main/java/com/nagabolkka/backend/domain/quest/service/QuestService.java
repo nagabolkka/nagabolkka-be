@@ -9,7 +9,6 @@ import com.nagabolkka.backend.domain.quest.dto.QuestActionRequest;
 import com.nagabolkka.backend.domain.quest.dto.TodayQuestResponse;
 import com.nagabolkka.backend.domain.quest.entity.DailyQuest;
 import com.nagabolkka.backend.domain.quest.repository.DailyQuestRepository;
-import com.nagabolkka.backend.domain.region.entity.RegionStatus;
 import com.nagabolkka.backend.domain.region.entity.UserRegion;
 import com.nagabolkka.backend.domain.region.repository.UserRegionRepository;
 import com.nagabolkka.backend.domain.user.entity.User;
@@ -80,7 +79,7 @@ public class QuestService {
     }
 
     // 홈 · 퀘스트가 동시에 불려도 하나만 배정되도록 사용자 행을 잠근다
-    private User lockOnboardedUser(Long userId) {
+    User lockOnboardedUser(Long userId) {
         User user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.UNAUTHORIZED));
 
@@ -102,13 +101,13 @@ public class QuestService {
         // 지나온 계단
         List<UserRegion> userRegions = userRegionRepository.findByUserIdOrderByRegionStageNoAsc(user.getId());
         Set<Integer> passedStageNos = userRegions.stream()
-                .filter(ur -> ur.getStatus() == RegionStatus.PASSED)
+                .filter(UserRegion::isPassed)
                 .map(ur -> ur.getRegion().getStageNo())
                 .collect(Collectors.toSet());
 
         // 후보 미션 : 현재 + 지나온 계단
         Set<Long> regionIds = userRegions.stream()
-                .filter(ur -> ur.getStatus() == RegionStatus.PASSED)
+                .filter(UserRegion::isPassed)
                 .map(ur -> ur.getRegion().getId())
                 .collect(Collectors.toCollection(HashSet::new));
         regionIds.add(user.getCurrentRegion().getId());

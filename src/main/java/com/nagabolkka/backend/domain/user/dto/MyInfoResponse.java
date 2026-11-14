@@ -16,10 +16,10 @@ public record MyInfoResponse(
         @Schema(description = "현재 지역 (시작 체크 전이면 null)", nullable = true)
         CurrentRegionInfo currentRegion,
 
-        @Schema(description = "모은 조각 수 (조각 기능 전까지 0)", example = "0")
+        @Schema(description = "모은 조각 수 (같은 조각 여러 번 포함 · 홈과 같음)", example = "8")
         int pieceCount,
 
-        @Schema(description = "도감 진행 (찾은 칸 / 전체 25칸)", example = "0/25")
+        @Schema(description = "도감 진행 (찾은 칸 / 전체 25칸)", example = "6/25")
         String collection,
 
         @Schema(description = "사회 연결 목표 (시작 체크 전이면 null)", nullable = true)
@@ -66,14 +66,11 @@ public record MyInfoResponse(
     ) {
     }
 
-    public static MyInfoResponse from(User user) {
-        int pieceCount = 0;
-        int foundSlots = 0;
-
+    public static MyInfoResponse from(User user, long pieceCount, long foundSlots) {
         return new MyInfoResponse(
                 user.getNickname(),
                 CurrentRegionInfo.from(user.getCurrentRegion()),
-                pieceCount,
+                (int) pieceCount,
                 foundSlots + "/" + TOTAL_SLOTS,
                 GoalInfo.from(user.getCurrentGoal()),
                 user.getDistrict() == null ? null : user.getDistrict().getId(),

@@ -7,8 +7,7 @@ import com.nagabolkka.backend.domain.home.dto.HomeState;
 import com.nagabolkka.backend.domain.piece.repository.PieceAcquisitionRepository;
 import com.nagabolkka.backend.domain.quest.entity.DailyQuest;
 import com.nagabolkka.backend.domain.quest.service.QuestService;
-import com.nagabolkka.backend.domain.region.entity.Region;
-import com.nagabolkka.backend.domain.region.entity.RegionStatus;
+import com.nagabolkka.backend.domain.region.service.NextRegionPolicy;
 import com.nagabolkka.backend.domain.region.entity.UserRegion;
 import com.nagabolkka.backend.domain.region.repository.UserRegionRepository;
 import com.nagabolkka.backend.domain.user.entity.User;
@@ -33,15 +32,12 @@ public class HomeService {
     // 마지막 접속이 3일 이상 전이면 "오랜만에 돌아옴"
     static final int WELCOME_BACK_DAYS = 3;
 
-    // 다음 지역 제안 → 머물기를 고르면 7일 뒤 다시 제안
-    static final int SUGGEST_AGAIN_DAYS = 7;
-    private static final int LAST_STAGE = 5;
-
     private final UserRepository userRepository;
     private final UserRegionRepository userRegionRepository;
     private final PieceAcquisitionRepository pieceAcquisitionRepository;
     private final GoalStepRepository goalStepRepository;
     private final QuestService questService;
+    private final NextRegionPolicy nextRegionPolicy;
     private final Clock clock;
 
     // 홈 : 오늘 퀘스트가 없으면 이때 배정
@@ -78,29 +74,11 @@ public class HomeService {
         boolean rainy = false; // TODO M4 : 기상청
 
         return HomeResponse.of(current, pieceCount, HomeState.of(quest, welcomeBack, rainy), quest,
-                userRegions, goal, goalChecked, goalTotal, nextRegionToSuggest(current, userRegions, now));
+                userRegions, goal, goalChecked, goalTotal, nextRegionPolicy.suggest(current, userRegions, now));
     }
 
     static boolean isWelcomeBack(LocalDateTime lastActiveAt, LocalDate today) {
         return lastActiveAt != null
                 && ChronoUnit.DAYS.between(lastActiveAt.toLocalDate(), today) >= WELCOME_BACK_DAYS;
-    }
-
-    // 현재 지역 복원도 100% · 마지막 계단 아님 · (처음이거나 머물기 후 7일 지남) → 다음 지역
-    private Region nextRegionToSuggest(UserRegion current, List<UserRegion> userRegions, LocalDateTime now) {
-        int stageNo = current.getRegion().getStageNo();
-        if (current.getRestoration() < 100 || stageNo >= LAST_STAGE) {
-            return null;
-        }
-        LocalDateTime lastSuggestedAt = current.getLastSuggestedAt();
-        if (lastSuggestedAt != null && lastSuggestedAt.isAfter(now.minusDays(SUGGEST_AGAIN_DAYS))) {
-            return null;
-        }
-        return userRegions.stream()
-                .filter(ur -> ur.getRegion().getStageNo() == stageNo + 1)
-                .filter(ur -> ur.getStatus() == RegionStatus.LOCKED)
-                .map(UserRegion::getRegion)
-                .findFirst()
-                .orElse(null);
     }
 }

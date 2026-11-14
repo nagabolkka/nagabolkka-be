@@ -20,6 +20,9 @@ import com.nagabolkka.backend.domain.quest.dto.QuestActionRequest;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import com.nagabolkka.backend.domain.quest.dto.CompleteQuestRequest;
+import com.nagabolkka.backend.domain.quest.dto.CompleteQuestResponse;
+import com.nagabolkka.backend.domain.quest.service.QuestCompleteService;
 
 @Tag(name = "퀘스트", description = "오늘 퀘스트 배정 · 동작 · 완료")
 @RestController
@@ -28,6 +31,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 public class QuestController {
 
     private final QuestService questService;
+    private final QuestCompleteService questCompleteService;
     @Operation(summary = "오늘 퀘스트",
             description = "오늘 퀘스트를 돌려줍니다. 아직 없으면 이때 배정합니다. (하루 1개, 여러 번 불러도 같은 퀘스트)\n\n"
                     + "쉬운 날 (EASY) 에는 지나온 계단에서 아직 못 찾은 조각 미션이 먼저 배정됩니다.")
@@ -77,5 +81,36 @@ public class QuestController {
     public TodayQuestResponse act(@Parameter(hidden = true) @AuthenticationPrincipal Long userId,
                                   @Valid @RequestBody QuestActionRequest request) {
         return questService.act(userId, request);
+    }
+
+    @Operation(summary = "오늘 퀘스트 완료 · 기록",
+            description = "오늘 퀘스트를 완료하고 기분 · 한 줄 회고를 기록합니다. 받은 조각 · 복원도 · 루미 한마디를 돌려줍니다.\n\n"
+                    + "- 조각 : 미션 보상 조각 + 1계단 미션에서 처음 회고를 남기면 쉼의 조각 (`isNew` 로 NEW 뱃지)\n"
+                    + "- 복원도 : 퀘스트 지역 +20% (지나온 계단 미션이면 그 계단, `restoration.stageNo`)\n"
+                    + "- 쪼갠 퀘스트는 `doneSteps` 1 이상\n\n"
+                    + "회고에서 위기 표현이 감지되면 `{\"crisisDetected\": true}` 만 돌려줍니다. (회고는 저장하지 않음, 조각 · 복원도는 처리)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "완료",
+                    content = @Content(schema = @Schema(implementation = CompleteQuestResponse.class))),
+            @ApiResponse(responseCode = "400", description = "입력값 오류 · 쪼갠 단계 없음",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class), examples = {
+                            @ExampleObject(name = "INVALID_INPUT", value = "{\"code\":\"INVALID_INPUT\",\"message\":\"입력값을 다시 확인해 주세요\"}"),
+                            @ExampleObject(name = "SPLIT_STEP_REQUIRED", value = "{\"code\":\"SPLIT_STEP_REQUIRED\",\"message\":\"한 단계 이상 해낸 뒤 완료할 수 있어요\"}")
+                    })),
+            @ApiResponse(responseCode = "401", description = "토큰 없음 · 만료",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class), examples = {
+                            @ExampleObject(name = "UNAUTHORIZED", value = "{\"code\":\"UNAUTHORIZED\",\"message\":\"다시 로그인해 주세요\"}"),
+                            @ExampleObject(name = "AUTH_TOKEN_EXPIRED", value = "{\"code\":\"AUTH_TOKEN_EXPIRED\",\"message\":\"로그인이 만료됐어요\"}")
+                    })),
+            @ApiResponse(responseCode = "409", description = "이미 끝난 퀘스트 · 시작 체크 전",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class), examples = {
+                            @ExampleObject(name = "QUEST_ALREADY_DONE", value = "{\"code\":\"QUEST_ALREADY_DONE\",\"message\":\"이미 끝난 퀘스트예요\"}"),
+                            @ExampleObject(name = "ONBOARDING_REQUIRED", value = "{\"code\":\"ONBOARDING_REQUIRED\",\"message\":\"시작 체크를 먼저 해 주세요\"}")
+                    }))
+    })
+    @PostMapping("/today/complete")
+    public CompleteQuestResponse complete(@Parameter(hidden = true) @AuthenticationPrincipal Long userId,
+                                          @Valid @RequestBody CompleteQuestRequest request) {
+        return questCompleteService.complete(userId, request);
     }
 }

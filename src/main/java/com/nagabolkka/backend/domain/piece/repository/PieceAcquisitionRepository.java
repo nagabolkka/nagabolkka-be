@@ -15,4 +15,17 @@ public interface PieceAcquisitionRepository extends JpaRepository<PieceAcquisiti
 
     // 홈 ◆ 배지 : 지금까지 모은 조각 수 (같은 조각 여러 번 포함)
     long countByUserId(Long userId);
+
+    // 처음 받는 조각인지 (NEW 뱃지 · 쉼의 조각 1번만)
+    boolean existsByUserIdAndPieceId(Long userId, Long pieceId);
+
+    // 도감 : 조각별 받은 횟수 · 처음 받은 시각 (받은 조각만)
+    @Query("select new com.nagabolkka.backend.domain.piece.repository.PieceCount(pa.piece.id, count(pa), min(pa.createdAt)) "
+            + "from PieceAcquisition pa where pa.user.id = :userId group by pa.piece.id")
+    List<PieceCount> countByPiece(@Param("userId") Long userId);
+
+    // 마이페이지 도감 진행 : 찾은 칸 수 (지역 칸만 · 같은 조각 여러 번 = 1칸)
+    @Query("select count(distinct pa.piece.id) from PieceAcquisition pa "
+            + "where pa.user.id = :userId and pa.piece.region is not null")
+    long countFoundSlots(@Param("userId") Long userId);
 }
