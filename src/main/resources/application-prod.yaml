@@ -6,6 +6,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       maximum-pool-size: 5
+      minimum-idle: 2
 
   h2:
     console:
@@ -19,6 +20,10 @@ spring:
 
 server:
   forward-headers-strategy: framework
+  tomcat:
+    threads:
+      max: 20
+      min-spare: 2
 
 cors:
   allowed-origins: https://nagabolkka.vercel.app
