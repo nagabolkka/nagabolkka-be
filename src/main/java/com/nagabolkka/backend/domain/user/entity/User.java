@@ -119,6 +119,11 @@ public class User extends BaseEntity {
         this.currentGoal = goal;
     }
 
+    // 다음 날 난이도 (완료 · 쉬기 후)
+    public void changeDifficulty(Difficulty difficulty) {
+        this.difficulty = difficulty;
+    }
+
     // 다음 지역으로 이동
     public void moveTo(Region region) {
         this.currentRegion = region;
