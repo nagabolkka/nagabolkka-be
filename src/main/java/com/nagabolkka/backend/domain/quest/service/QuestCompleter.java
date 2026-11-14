@@ -38,7 +38,7 @@ import java.util.Objects;
 public class QuestCompleter {
 
     // 쉼의 조각 = 1계단 미션을 완료하면서 처음 회고를 남겼을 때
-    private static final int REST_PIECE_STAGE = 1;
+    static final int REST_PIECE_STAGE = 1;
 
     private final QuestService questService;
     private final QuestRecordRepository questRecordRepository;
