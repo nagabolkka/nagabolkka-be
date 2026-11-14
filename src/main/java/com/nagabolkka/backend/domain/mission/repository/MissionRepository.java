@@ -19,6 +19,6 @@ public interface MissionRepository extends JpaRepository<Mission, Long> {
             """)
     List<Mission> findActiveByRegionIds(@Param("regionIds") Collection<Long> regionIds);
 
-    // 시드 : 보상 조각 하나에 미션 하나 (MVP)
-    boolean existsByRewardPieceId(Long rewardPieceId);
+    // 시드 : 같은 제목 미션이 이미 있으면 건너뜀 (보상 조각 하나에 미션 여러 개)
+    boolean existsByTitle(String title);
 }
