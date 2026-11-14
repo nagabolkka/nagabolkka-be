@@ -46,3 +46,7 @@ openai:
   api-key: ${OPENAI_API_KEY:}
 cors:
   allowed-origins: http://localhost:5173
+ai:
+  base-url: ${AI_BASE_URL:http://localhost:8000}
+  internal-key: ${AI_INTERNAL_KEY:local-dev-key}
+  timeout: 3s
