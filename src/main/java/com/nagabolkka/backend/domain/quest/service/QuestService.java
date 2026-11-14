@@ -17,6 +17,7 @@ import com.nagabolkka.backend.global.exception.CustomException;
 import com.nagabolkka.backend.global.exception.ErrorCode;
 import com.nagabolkka.backend.domain.piece.entity.PieceType;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -65,7 +66,10 @@ public class QuestService {
                 List<Mission> candidates = missionRepository.findActiveByRegionIds(List.of(quest.getRegion().getId()));
                 quest.change(questAssigner.pickChange(quest.getMission(), candidates));
             }
-            case SKIP -> quest.skip();
+            case SKIP -> {
+                quest.skip();
+                user.changeDifficulty(DifficultyPolicy.afterSkip(user.getDifficulty()));
+            }
         }
 
         return toResponse(quest);
@@ -120,8 +124,12 @@ public class QuestService {
 
         boolean rainy = false;
 
+        // 최근 미션 (겹치지 않게)
+        List<Long> recentMissionIds = dailyQuestRepository.findRecentMissionIds(user.getId(), today,
+                PageRequest.of(0, QuestAssigner.RECENT_DAYS));
+
         Mission mission = questAssigner.pick(user.getCurrentRegion().getStageNo(), user.getDifficulty(),
-                rainy, candidates, passedStageNos, foundPieceIds);
+                rainy, candidates, passedStageNos, foundPieceIds, recentMissionIds);
 
         return dailyQuestRepository.save(DailyQuest.assign(user, today, mission));
     }
