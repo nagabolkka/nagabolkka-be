@@ -42,6 +42,8 @@ crypto:
   aes-key: ${AES_KEY:bG9jYWwtZGV2LW9ubHktYWVzLWtleS0zMmJ5dGVzISE=}
 kma:
   service-key: ${KMA_SERVICE_KEY:}
+  base-url: https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0
+  timeout: 2s
 openai:
   api-key: ${OPENAI_API_KEY:}
 cors:
