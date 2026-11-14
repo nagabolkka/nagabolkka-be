@@ -12,7 +12,14 @@ services:
     command:
       - --performance-schema=OFF
       - --innodb-buffer-pool-size=64M
-      - --max-connections=30
+      - --innodb-log-buffer-size=4M
+      - --max-connections=20
+      - --thread-cache-size=4
+      - --table-open-cache=128
+      - --table-definition-cache=400
+      - --tmp-table-size=8M
+      - --max-heap-table-size=8M
+      - --disable-log-bin
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
     volumes:
@@ -30,7 +37,7 @@ services:
     env_file: .env
     environment:
       SPRING_PROFILES_ACTIVE: prod
-      JAVA_OPTS: "-Xms128m -Xmx384m"
+      JAVA_OPTS: "-Xms128m -Xmx256m -XX:MaxMetaspaceSize=160m -XX:ReservedCodeCacheSize=64m -XX:MaxDirectMemorySize=32m -Xss512k -XX:+UseSerialGC -XX:+ExitOnOutOfMemoryError"
       TZ: Asia/Seoul
     depends_on:
       mysql:
