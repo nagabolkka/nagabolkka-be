@@ -22,6 +22,7 @@ import com.nagabolkka.backend.global.common.Difficulty;
 import com.nagabolkka.backend.global.config.ClockConfig;
 import com.nagabolkka.backend.global.exception.CustomException;
 import com.nagabolkka.backend.global.exception.ErrorCode;
+import com.nagabolkka.backend.domain.region.service.NextRegionPolicy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -69,7 +70,7 @@ class HomeServiceTest {
     @BeforeEach
     void setUp() {
         homeService = new HomeService(userRepository, userRegionRepository, pieceAcquisitionRepository,
-                goalStepRepository, questService, CLOCK);
+                goalStepRepository, questService, new NextRegionPolicy(), CLOCK);
 
         regions = IntStream.rangeClosed(1, 5)
                 .mapToObj(stage -> {
