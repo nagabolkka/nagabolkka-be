@@ -2,6 +2,7 @@ package com.nagabolkka.backend.domain.user.service;
 
 import com.nagabolkka.backend.domain.goal.entity.Goal;
 import com.nagabolkka.backend.domain.goal.repository.GoalRepository;
+import com.nagabolkka.backend.domain.piece.repository.PieceAcquisitionRepository;
 import com.nagabolkka.backend.domain.user.dto.MyInfoResponse;
 import com.nagabolkka.backend.domain.user.dto.UpdateMyInfoRequest;
 import com.nagabolkka.backend.domain.user.entity.User;
@@ -19,10 +20,11 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final GoalRepository goalRepository;
+    private final PieceAcquisitionRepository pieceAcquisitionRepository;
 
     // 내 정보 (마이페이지)
     public MyInfoResponse getMyInfo(Long userId) {
-        return MyInfoResponse.from(findUser(userId));
+        return toResponse(findUser(userId));
     }
 
     // 목표 변경
@@ -37,7 +39,14 @@ public class UserService {
         // 목표를 바꿔도 단계 체크 기록은 지우지 않음 → 다시 고르면 이어서
         user.changeGoal(goal);
 
-        return MyInfoResponse.from(user);
+        return toResponse(user);
+    }
+
+    // 조각 수 · 찾은 칸 수는 조각 기록에서 센다
+    private MyInfoResponse toResponse(User user) {
+        return MyInfoResponse.from(user,
+                pieceAcquisitionRepository.countByUserId(user.getId()),
+                pieceAcquisitionRepository.countFoundSlots(user.getId()));
     }
 
     private User findUser(Long userId) {
