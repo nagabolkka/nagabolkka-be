@@ -15,6 +15,7 @@ import com.nagabolkka.backend.domain.user.entity.User;
 import com.nagabolkka.backend.domain.user.repository.UserRepository;
 import com.nagabolkka.backend.global.exception.CustomException;
 import com.nagabolkka.backend.global.exception.ErrorCode;
+import com.nagabolkka.backend.domain.piece.entity.PieceType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -89,12 +90,14 @@ public class QuestService {
         return user;
     }
 
-    // 쪼갠 퀘스트만 단계 조회
+    // 쪼갠 퀘스트만 단계 조회 · 쉼의 조각 안내는 1계단 퀘스트일 때만 조회
     private TodayQuestResponse toResponse(DailyQuest quest) {
         List<MissionStep> steps = quest.isSplit()
                 ? missionStepRepository.findByMissionIdOrderByStepNoAsc(quest.getMission().getId())
                 : List.of();
-        return TodayQuestResponse.of(quest, steps);
+        boolean restPieceAvailable = quest.getRegion().getStageNo() == QuestCompleter.REST_PIECE_STAGE
+                && !pieceAcquisitionRepository.existsByUserIdAndPieceType(quest.getUser().getId(), PieceType.REFLECTION);
+        return TodayQuestResponse.of(quest, steps, restPieceAvailable);
     }
 
     private DailyQuest assign(User user, LocalDate today) {

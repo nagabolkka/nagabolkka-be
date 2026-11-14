@@ -152,4 +152,28 @@ class QuestServiceTest {
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.UNAUTHORIZED);
     }
+
+    @Test
+    @DisplayName("쉼의 조각 안내 : 1계단 퀘스트 · 아직 안 받음 → true, 받은 뒤 → false")
+    void restPieceAvailable_stage1() {
+        DailyQuest stage1Quest = DailyQuest.assign(user, TODAY, stage1Easy);
+        given(userRepository.findByIdForUpdate(USER_ID)).willReturn(Optional.of(user));
+        given(dailyQuestRepository.findToday(USER_ID, TODAY)).willReturn(Optional.of(stage1Quest));
+        given(pieceAcquisitionRepository.existsByUserIdAndPieceType(USER_ID, PieceType.REFLECTION))
+                .willReturn(false, true); // 첫 조회 : 안 받음 → 두 번째 : 받음
+
+        assertThat(questService.getToday(USER_ID).restPieceAvailable()).isTrue();
+        assertThat(questService.getToday(USER_ID).restPieceAvailable()).isFalse();
+    }
+
+    @Test
+    @DisplayName("쉼의 조각 안내 : 2계단 퀘스트 → false (조각 기록 조회 안 함)")
+    void restPieceAvailable_otherStage() {
+        DailyQuest stage2Quest = DailyQuest.assign(user, TODAY, stage2Easy);
+        given(userRepository.findByIdForUpdate(USER_ID)).willReturn(Optional.of(user));
+        given(dailyQuestRepository.findToday(USER_ID, TODAY)).willReturn(Optional.of(stage2Quest));
+
+        assertThat(questService.getToday(USER_ID).restPieceAvailable()).isFalse();
+        then(pieceAcquisitionRepository).should(never()).existsByUserIdAndPieceType(any(), any());
+    }
 }

@@ -1,6 +1,7 @@
 package com.nagabolkka.backend.domain.piece.repository;
 
 import com.nagabolkka.backend.domain.piece.entity.PieceAcquisition;
+import com.nagabolkka.backend.domain.piece.entity.PieceType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -28,4 +29,7 @@ public interface PieceAcquisitionRepository extends JpaRepository<PieceAcquisiti
     @Query("select count(distinct pa.piece.id) from PieceAcquisition pa "
             + "where pa.user.id = :userId and pa.piece.region is not null")
     long countFoundSlots(@Param("userId") Long userId);
+
+    // 이 종류 조각을 받은 적 있는지 (쉼의 조각 안내 : REFLECTION)
+    boolean existsByUserIdAndPieceType(Long userId, PieceType type);
 }
