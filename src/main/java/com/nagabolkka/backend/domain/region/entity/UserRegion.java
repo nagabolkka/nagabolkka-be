@@ -72,6 +72,27 @@ public class UserRegion extends BaseEntity {
         completedCount++;
     }
 
+    // 다음 지역으로 넘어감 → 지금 지역은 다 복원한 곳
+    public void complete() {
+        status = RegionStatus.COMPLETED;
+    }
+
+    // 다음 지역 열기 → 지금 머무는 지역
+    public void unlock(LocalDateTime now) {
+        status = RegionStatus.ACTIVE;
+        unlockedAt = now;
+    }
+
+    // 다음 지역 제안에서 머물기 → 7일 뒤 다시 제안 (NextRegionPolicy)
+    public void stay(LocalDateTime now) {
+        lastSuggestedAt = now;
+    }
+
+    // 지나온 곳 = 시작 체크 때 건너뛴 계단(PASSED) · 다 복원하고 넘어온 계단(COMPLETED)
+    public boolean isPassed() {
+        return status == RegionStatus.PASSED || status == RegionStatus.COMPLETED;
+    }
+
     // 복원도 0~100 (퀘스트 완료 1회당 20%, 최대 100)
     public int getRestoration() {
         return Math.min(completedCount, 5) * 20;

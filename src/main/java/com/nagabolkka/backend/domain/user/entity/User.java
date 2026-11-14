@@ -118,4 +118,9 @@ public class User extends BaseEntity {
     public void changeGoal(Goal goal) {
         this.currentGoal = goal;
     }
+
+    // 다음 지역으로 이동
+    public void moveTo(Region region) {
+        this.currentRegion = region;
+    }
 }
