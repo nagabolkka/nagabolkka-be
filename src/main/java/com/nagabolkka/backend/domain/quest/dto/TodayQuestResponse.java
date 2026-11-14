@@ -29,7 +29,8 @@ public record TodayQuestResponse(
         RewardInfo reward,
         @Schema(example = "false") boolean isSplit,
         @Schema(description = "쪼갠 뒤에만 채워짐 (미션별 고정 단계)") List<StepInfo> steps,
-        @Schema(description = "오늘 남은 바꾸기 횟수", example = "2") int changeRemaining
+        @Schema(description = "오늘 남은 바꾸기 횟수", example = "2") int changeRemaining,
+        @Schema(description = "기록 화면 쉼의 조각 안내 : 1계단 퀘스트 + 쉼의 조각을 아직 안 받음", example = "true") boolean restPieceAvailable
 ) {
 
     // 도보 시간 = 직선거리 × 1.3 ÷ 67m/분
@@ -64,7 +65,7 @@ public record TodayQuestResponse(
     ) {
     }
 
-    public static TodayQuestResponse of(DailyQuest quest, List<MissionStep> steps) {
+    public static TodayQuestResponse of(DailyQuest quest, List<MissionStep> steps, boolean restPieceAvailable) {
         Mission mission = quest.getMission();
         Piece piece = mission.getRewardPiece();
         Integer distanceM = quest.getDistanceM();
@@ -86,7 +87,8 @@ public record TodayQuestResponse(
                 new RewardInfo(piece.getId(), piece.getName(), piece.getRestoreText()),
                 quest.isSplit(),
                 steps.stream().map(s -> new StepInfo(s.getStepNo(), s.getContent())).toList(),
-                quest.getChangeRemaining()
+                quest.getChangeRemaining(),
+                restPieceAvailable
         );
     }
 }
