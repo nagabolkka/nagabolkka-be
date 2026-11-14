@@ -48,8 +48,9 @@ public class AiClient {
         try {
             return Optional.ofNullable(request.get());
         } catch (RestClientException e) {
-            // 원문(회고)은 로그에 남기지 않는다
-            log.warn("AI 서버 호출 실패: {}", e.getClass().getSimpleName());
+            // 원문(회고)은 로그에 남기지 않는다 · 원인 예외 이름만 (응답 시간 초과 / 연결 실패 구분)
+            log.warn("AI 서버 호출 실패: {} ({})", e.getClass().getSimpleName(),
+                    e.getMostSpecificCause().getClass().getSimpleName());
             return Optional.empty();
         }
     }
