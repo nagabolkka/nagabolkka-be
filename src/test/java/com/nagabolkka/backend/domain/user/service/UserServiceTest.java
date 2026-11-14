@@ -11,6 +11,8 @@ import com.nagabolkka.backend.domain.user.entity.User;
 import com.nagabolkka.backend.domain.user.repository.UserRepository;
 import com.nagabolkka.backend.global.exception.CustomException;
 import com.nagabolkka.backend.global.exception.ErrorCode;
+import com.nagabolkka.backend.domain.piece.repository.PieceAcquisitionRepository;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -35,6 +37,8 @@ class UserServiceTest {
     UserRepository userRepository;
     @Mock
     GoalRepository goalRepository;
+    @Mock
+    PieceAcquisitionRepository pieceAcquisitionRepository;
 
     @InjectMocks
     UserService userService;
@@ -123,5 +127,20 @@ class UserServiceTest {
                 .extracting("errorCode").isEqualTo(ErrorCode.INVALID_INPUT);
 
         assertThat(user.getCurrentGoal()).isSameAs(meetup);
+    }
+
+    @Test
+    @DisplayName("내 정보 : 조각 수 · 도감 진행은 조각 기록에서 (8개 · 6/25)")
+    void getMyInfo_pieces() {
+        ReflectionTestUtils.setField(user, "id", USER_ID);
+        user.completeOnboarding(7, region, meetup, district);
+        given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+        given(pieceAcquisitionRepository.countByUserId(USER_ID)).willReturn(8L);
+        given(pieceAcquisitionRepository.countFoundSlots(USER_ID)).willReturn(6L);
+
+        MyInfoResponse response = userService.getMyInfo(USER_ID);
+
+        assertThat(response.pieceCount()).isEqualTo(8);
+        assertThat(response.collection()).isEqualTo("6/25");
     }
 }
