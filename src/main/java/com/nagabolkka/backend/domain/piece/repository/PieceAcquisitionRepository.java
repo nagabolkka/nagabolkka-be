@@ -15,4 +15,7 @@ public interface PieceAcquisitionRepository extends JpaRepository<PieceAcquisiti
 
     // 홈 ◆ 배지 : 지금까지 모은 조각 수 (같은 조각 여러 번 포함)
     long countByUserId(Long userId);
+
+    // 처음 받는 조각인지 (NEW 뱃지 · 쉼의 조각 1번만)
+    boolean existsByUserIdAndPieceId(Long userId, Long pieceId);
 }

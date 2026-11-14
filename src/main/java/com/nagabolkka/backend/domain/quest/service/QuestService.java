@@ -80,7 +80,7 @@ public class QuestService {
     }
 
     // 홈 · 퀘스트가 동시에 불려도 하나만 배정되도록 사용자 행을 잠근다
-    private User lockOnboardedUser(Long userId) {
+    User lockOnboardedUser(Long userId) {
         User user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.UNAUTHORIZED));
 

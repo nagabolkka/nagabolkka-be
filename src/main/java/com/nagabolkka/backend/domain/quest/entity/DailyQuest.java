@@ -137,6 +137,17 @@ public class DailyQuest extends BaseEntity {
         status = QuestStatus.SKIPPED;
     }
 
+    // 완료 : 배정 · 진행 중 → 완료 (수락 없이 바로 완료도 가능)
+    public void complete(int doneSteps, LocalDateTime now) {
+        checkNotDone();
+        if (split && doneSteps < 1) {
+            throw new CustomException(ErrorCode.SPLIT_STEP_REQUIRED);
+        }
+        status = QuestStatus.COMPLETED;
+        splitDoneSteps = split ? doneSteps : 0; // 안 쪼갰으면 무시
+        completedAt = now;
+    }
+
     // 끝난 퀘스트 = 완료 · 쉬기
     public boolean isDone() {
         return status == QuestStatus.COMPLETED || status == QuestStatus.SKIPPED;
