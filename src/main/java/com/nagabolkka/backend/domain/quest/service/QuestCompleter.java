@@ -74,6 +74,12 @@ public class QuestCompleter {
         DailyQuest quest = questService.findOrAssign(user, now.toLocalDate());
         quest.complete(doneSteps, now);
 
+        // 다음 날 난이도 (위기면 가장 쉬움) → 내일 배정부터
+        Difficulty nextDifficulty = crisis
+                ? DifficultyPolicy.afterCrisis()
+                : DifficultyPolicy.afterComplete(user.getDifficulty(), mood);
+        user.changeDifficulty(nextDifficulty);
+
         // 3) 기록 : 위기면 회고 저장 안 함 + 위기 기록 (시각만)
         String savedReflection = crisis ? null : reflection;
         byte[] reflectionEnc = savedReflection == null ? null : aesUtil.encrypt(savedReflection);
@@ -110,7 +116,7 @@ public class QuestCompleter {
                 record.getId(),
                 pieces,
                 restoration,
-                user.getDifficulty(), // TODO TDD : 다음 날 난이도 계산
+                nextDifficulty,
                 next == null ? null : new NextRegion(next.getStageNo(), next.getName()),
                 user.getNickname(),
                 quest.getMission().getTitle(),

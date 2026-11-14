@@ -184,4 +184,15 @@ class QuestActionServiceTest {
                 .extracting("errorCode").isEqualTo(ErrorCode.ONBOARDING_REQUIRED);
         then(dailyQuestRepository).should(never()).findToday(any(), any());
     }
+
+    @Test
+    @DisplayName("SKIP → 다음 날 난이도 한 단계 내림 (NORMAL → EASY)")
+    void skip_lowersDifficulty() {
+        givenTodayQuest();
+        ReflectionTestUtils.setField(user, "difficulty", Difficulty.NORMAL);
+
+        act(QuestActionType.SKIP);
+
+        assertThat(user.getDifficulty()).isEqualTo(Difficulty.EASY);
+    }
 }

@@ -213,4 +213,27 @@ class QuestCompleterTest {
         assertThat(result.restoration().stageNo()).isEqualTo(1);
         assertThat(userRegions.get(1).getCompletedCount()).isZero();
     }
+
+    @Test
+    @DisplayName("다음 날 난이도 : 기분 5 → 한 단계 올림 (EASY → NORMAL) · 사용자에 저장")
+    void nextDifficulty_up() {
+        givenTodayQuest();
+
+        QuestCompleter.Result result = completer.complete(USER_ID, 5, 0, null, false);
+
+        assertThat(result.nextDifficulty()).isEqualTo(Difficulty.NORMAL);
+        assertThat(user.getDifficulty()).isEqualTo(Difficulty.NORMAL);
+    }
+
+    @Test
+    @DisplayName("다음 날 난이도 : 위기 감지 → 가장 쉬움 (CHALLENGE → EASY)")
+    void nextDifficulty_crisis() {
+        ReflectionTestUtils.setField(user, "difficulty", Difficulty.CHALLENGE);
+        givenTodayQuest();
+
+        QuestCompleter.Result result = completer.complete(USER_ID, 4, 0, "살기 싫어", true);
+
+        assertThat(result.nextDifficulty()).isEqualTo(Difficulty.EASY);
+        assertThat(user.getDifficulty()).isEqualTo(Difficulty.EASY);
+    }
 }
