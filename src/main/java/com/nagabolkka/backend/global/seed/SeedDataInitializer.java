@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.IntStream;
 
 import static com.nagabolkka.backend.domain.piece.entity.PieceType.CHALLENGE;
@@ -460,6 +461,35 @@ public class SeedDataInitializer implements ApplicationRunner {
                             List.of("등록할 것 다시 확인하기", "일정 고르기", "등록 마치기"))
     );
 
+    // 바깥 미션 기본 장소 이름 → 카카오 로컬 검색어 (없는 이름 = 검색 안 함 : 현관 · 집 앞 · 복도 · 프로그램 장소 등)
+    private static final Map<String, String> PLACE_QUERIES = Map.ofEntries(
+            // 2계단 문 앞
+            Map.entry("가까운 편의점", "편의점"),
+            Map.entry("모퉁이 빵집", "빵집"),
+            Map.entry("가까운 카페", "카페"),
+            Map.entry("동네 생활용품점", "다이소"),
+            Map.entry("동네 분식집", "분식"),
+            Map.entry("동네 시장", "전통시장"),
+            // 3계단 동네
+            Map.entry("개운산 근린공원 입구", "근린공원"),
+            Map.entry("종암동새날도서관", "종암동새날도서관"),
+            Map.entry("조용한 동네 카페", "카페"),
+            Map.entry("동네 산책로", "근린공원"),
+            Map.entry("가까운 공원", "근린공원"),
+            Map.entry("동네 도서관", "공공도서관"),
+            Map.entry("동네 서점", "서점"),
+            Map.entry("동네 식당", "백반"),
+            Map.entry("동네 주민센터", "주민센터"),
+            Map.entry("동네 카페", "카페"),
+            Map.entry("동네 미용실", "미용실"),
+            // 4 · 5계단 사람 곁 · 사회 연결
+            Map.entry("서울청년센터 성북", "서울청년센터 성북"),
+            Map.entry("서울청년센터 성북 2층 오픈라운지", "서울청년센터 성북"),
+            Map.entry("청년 공간 라운지", "청년공간"),
+            Map.entry("청년 공간", "청년공간"),
+            Map.entry("청년센터", "청년공간")
+    );
+
     private final DistrictRepository districtRepository;
     private final RegionRepository regionRepository;
     private final GoalRepository goalRepository;
@@ -476,6 +506,7 @@ public class SeedDataInitializer implements ApplicationRunner {
         seedGoals();
         seedPieces();
         seedMissions();
+        seedKakaoQueries();
         log.info("시드 데이터 확인 완료 (구 {} · 지역 {} · 목표 {} · 조각 {} · 미션 {})",
                 districtRepository.count(), regionRepository.count(), goalRepository.count(),
                 pieceRepository.count(), missionRepository.count());
@@ -541,6 +572,22 @@ public class SeedDataInitializer implements ApplicationRunner {
             missionStepRepository.saveAll(IntStream.range(0, seed.steps().size())
                     .mapToObj(i -> MissionStep.of(mission, i + 1, seed.steps().get(i)))
                     .toList());
+        }
+    }
+
+    // 바깥 미션 검색어 채우기 · 비어 있는 것만 (운영 DB 기존 미션도 이때 채워짐)
+    private void seedKakaoQueries() {
+        int updated = 0;
+        for (Mission mission : missionRepository.findAll()) {
+            String query = PLACE_QUERIES.get(mission.getPlaceName());
+            if (mission.isIndoor() || query == null || mission.hasKakaoQuery()) {
+                continue;
+            }
+            mission.changeKakaoQuery(query); // run 이 @Transactional → 변경 감지로 저장
+            updated++;
+        }
+        if (updated > 0) {
+            log.info("미션 카카오 검색어 {}개 채움", updated);
         }
     }
 

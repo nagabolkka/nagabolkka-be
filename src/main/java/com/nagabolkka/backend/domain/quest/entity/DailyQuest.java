@@ -26,6 +26,7 @@ import com.nagabolkka.backend.global.exception.ErrorCode;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 // 사용자 별 하루 퀘스트 (하루 1개)
 @Getter
@@ -72,6 +73,16 @@ public class DailyQuest extends BaseEntity {
     @Column(length = 60)
     private String placeName;
 
+    // 카카오 로컬 장소 (바깥 미션 · 못 찾으면 null) — 장소 좌표이지 사용자 위치 아님
+    @Column(length = 20)
+    private String kakaoPlaceId;
+
+    @Column(precision = 10, scale = 7)
+    private BigDecimal placeLat;
+
+    @Column(precision = 10, scale = 7)
+    private BigDecimal placeLng;
+
     // 사용자 위치 ↔ 장소 직선거리 (사용자 좌표는 저장 안 함) · 실내 0 · 모르면 null
     private Integer distanceM;
 
@@ -107,6 +118,16 @@ public class DailyQuest extends BaseEntity {
 
     public int getChangeRemaining() {
         return MAX_CHANGE - changeCount;
+    }
+
+    // 실제 장소 찾음 : 이름 · 좌표 · 거리 (사용자 좌표는 저장하지 않음)
+    public void foundPlace(String kakaoPlaceId, String placeName, BigDecimal placeLat, BigDecimal placeLng,
+                           int distanceM) {
+        this.kakaoPlaceId = kakaoPlaceId;
+        this.placeName = placeName.length() > 60 ? placeName.substring(0, 60) : placeName;
+        this.placeLat = placeLat;
+        this.placeLng = placeLng;
+        this.distanceM = distanceM;
     }
 
     // 수락 → 진행 중 (이미 진행 중이면 그대로 · 버튼 두 번 눌러도 OK)
@@ -175,6 +196,9 @@ public class DailyQuest extends BaseEntity {
         this.status = QuestStatus.ASSIGNED;
         this.placeName = newMission.getPlaceName();
         this.distanceM = newMission.isIndoor() ? 0 : null;
+        this.kakaoPlaceId = null;
+        this.placeLat = null;
+        this.placeLng = null;
         this.split = false;
         this.splitDoneSteps = 0;
         this.acceptedAt = null;
