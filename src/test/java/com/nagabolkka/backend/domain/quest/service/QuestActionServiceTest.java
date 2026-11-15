@@ -63,6 +63,7 @@ class QuestActionServiceTest {
     @Mock PieceAcquisitionRepository pieceAcquisitionRepository;
     @Mock DailyQuestRepository dailyQuestRepository;
     @Mock WeatherService weatherService;
+    @Mock QuestPlaceFinder questPlaceFinder;
 
     QuestService questService;
 
@@ -78,7 +79,7 @@ class QuestActionServiceTest {
     void setUp() {
         questService = new QuestService(userRepository, userRegionRepository, missionRepository,
                 missionStepRepository, pieceAcquisitionRepository, dailyQuestRepository,
-                new QuestAssigner(), weatherService, CLOCK);
+                new QuestAssigner(), weatherService, questPlaceFinder, CLOCK);
 
         stage2 = Region.of(2, "바람의 숲", "문 앞", "바람의 조각", "#9DD49A", "a.png", "b.png");
         ReflectionTestUtils.setField(stage2, "id", 2L);
@@ -110,7 +111,7 @@ class QuestActionServiceTest {
     }
 
     private TodayQuestResponse act(QuestActionType type) {
-        return questService.act(USER_ID, new QuestActionRequest(type));
+        return questService.act(USER_ID, new QuestActionRequest(type), null);
     }
 
     @Test

@@ -62,6 +62,7 @@ class QuestServiceTest {
     @Mock PieceAcquisitionRepository pieceAcquisitionRepository;
     @Mock DailyQuestRepository dailyQuestRepository;
     @Mock WeatherService weatherService;
+    @Mock QuestPlaceFinder questPlaceFinder;
 
     QuestService questService;
 
@@ -75,7 +76,7 @@ class QuestServiceTest {
     void setUp() {
         questService = new QuestService(userRepository, userRegionRepository, missionRepository,
                 missionStepRepository, pieceAcquisitionRepository, dailyQuestRepository,
-                new QuestAssigner(), weatherService, CLOCK);
+                new QuestAssigner(), weatherService, questPlaceFinder, CLOCK);
 
         stage1 = Region.of(1, "시작의 방", "집 안", "빛의 조각", "#E8C06A", "a.png", "b.png");
         stage2 = Region.of(2, "바람의 숲", "문 앞", "바람의 조각", "#9DD49A", "a.png", "b.png");
@@ -105,7 +106,7 @@ class QuestServiceTest {
         given(userRepository.findByIdForUpdate(USER_ID)).willReturn(Optional.of(user));
         given(dailyQuestRepository.findToday(USER_ID, TODAY)).willReturn(Optional.of(existing));
 
-        TodayQuestResponse response = questService.getToday(USER_ID);
+        TodayQuestResponse response = questService.getToday(USER_ID, null);
 
         assertThat(response.title()).isEqualTo("집 앞 골목 한 바퀴, 10분 산책");
         then(dailyQuestRepository).should(never()).save(any());
@@ -123,7 +124,7 @@ class QuestServiceTest {
         given(pieceAcquisitionRepository.findFoundPieceIds(user.getId())).willReturn(List.of());
         given(dailyQuestRepository.save(any(DailyQuest.class))).willAnswer(inv -> inv.getArgument(0));
 
-        TodayQuestResponse response = questService.getToday(USER_ID);
+        TodayQuestResponse response = questService.getToday(USER_ID, null);
 
         assertThat(response.questDate()).isEqualTo(TODAY);
         assertThat(response.status()).isEqualTo(QuestStatus.ASSIGNED);
@@ -140,7 +141,7 @@ class QuestServiceTest {
         User newUser = User.createKakaoUser("동진");
         given(userRepository.findByIdForUpdate(USER_ID)).willReturn(Optional.of(newUser));
 
-        assertThatThrownBy(() -> questService.getToday(USER_ID))
+        assertThatThrownBy(() -> questService.getToday(USER_ID, null))
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.ONBOARDING_REQUIRED);
     }
@@ -150,7 +151,7 @@ class QuestServiceTest {
     void getToday_userNotFound() {
         given(userRepository.findByIdForUpdate(USER_ID)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> questService.getToday(USER_ID))
+        assertThatThrownBy(() -> questService.getToday(USER_ID, null))
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.UNAUTHORIZED);
     }
@@ -164,8 +165,8 @@ class QuestServiceTest {
         given(pieceAcquisitionRepository.existsByUserIdAndPieceType(USER_ID, PieceType.REFLECTION))
                 .willReturn(false, true); // 첫 조회 : 안 받음 → 두 번째 : 받음
 
-        assertThat(questService.getToday(USER_ID).restPieceAvailable()).isTrue();
-        assertThat(questService.getToday(USER_ID).restPieceAvailable()).isFalse();
+        assertThat(questService.getToday(USER_ID, null).restPieceAvailable()).isTrue();
+        assertThat(questService.getToday(USER_ID, null).restPieceAvailable()).isFalse();
     }
 
     @Test
@@ -175,7 +176,7 @@ class QuestServiceTest {
         given(userRepository.findByIdForUpdate(USER_ID)).willReturn(Optional.of(user));
         given(dailyQuestRepository.findToday(USER_ID, TODAY)).willReturn(Optional.of(stage2Quest));
 
-        assertThat(questService.getToday(USER_ID).restPieceAvailable()).isFalse();
+        assertThat(questService.getToday(USER_ID, null).restPieceAvailable()).isFalse();
         then(pieceAcquisitionRepository).should(never()).existsByUserIdAndPieceType(any(), any());
     }
 }

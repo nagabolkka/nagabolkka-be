@@ -60,6 +60,10 @@ public class Mission extends BaseEntity {
     @Column(nullable = false, length = 60)
     private String placeName;
 
+    // 카카오 로컬 검색어 (바깥 미션에서 실제 장소를 찾을 때) · 없으면 기본 장소 이름만
+    @Column(length = 50)
+    private String kakaoQuery;
+
     @Column(nullable = false)
     private int estMinutes;
 
@@ -86,5 +90,14 @@ public class Mission extends BaseEntity {
     // 빗소리 칸 미션 → 비 오는 날에만 배정
     public boolean isRainyOnly() {
         return rewardPiece.getType() == PieceType.RAINY;
+    }
+
+    public boolean hasKakaoQuery() {
+        return kakaoQuery != null && !kakaoQuery.isBlank();
+    }
+
+    // 시드 : 검색어 채우기 (기존 미션 포함)
+    public void changeKakaoQuery(String kakaoQuery) {
+        this.kakaoQuery = kakaoQuery;
     }
 }

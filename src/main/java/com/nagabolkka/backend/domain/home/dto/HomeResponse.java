@@ -51,8 +51,8 @@ public record HomeResponse(
             @Schema(description = "미션의 계단 (지나온 계단 미션이면 현재보다 낮음) → 카드 조각 색", example = "1") int stageNo,
             @Schema(example = "창문 열고 바깥 공기 3분 마시기") String title,
             @Schema(example = "EASY") Difficulty difficulty,
-            @Schema(example = "내 방 창가") String placeName,
-            @Schema(description = "실내 0 · 모르면 null", example = "0", nullable = true) Integer distanceM,
+            @Schema(description = "장소 이름 (바깥 미션은 근처 실제 장소)", example = "내 방 창가") String placeName,
+            @Schema(description = "실내 0 · 실제 장소면 거리 · 모르면 null", example = "0", nullable = true) Integer distanceM,
             @Schema(example = "3") int estMinutes,
             @Schema(description = "진행 중이면 쪼개기 화면 / 진행 화면 분기", example = "false") boolean isSplit,
             Reward reward

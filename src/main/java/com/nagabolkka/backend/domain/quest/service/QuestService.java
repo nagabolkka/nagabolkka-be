@@ -17,6 +17,7 @@ import com.nagabolkka.backend.global.exception.CustomException;
 import com.nagabolkka.backend.global.exception.ErrorCode;
 import com.nagabolkka.backend.domain.piece.entity.PieceType;
 import com.nagabolkka.backend.global.weather.WeatherService;
+import com.nagabolkka.backend.global.geo.GeoPoint;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -42,22 +43,23 @@ public class QuestService {
     private final DailyQuestRepository dailyQuestRepository;
     private final QuestAssigner questAssigner;
     private final WeatherService weatherService;
+    private final QuestPlaceFinder questPlaceFinder;
     private final Clock clock;
 
     // 오늘 퀘스트 : 있으면 그대로, 없으면 이때 배정 (하루 1개 · 멱등)
     @Transactional
-    public TodayQuestResponse getToday(Long userId) {
+    public TodayQuestResponse getToday(Long userId, GeoPoint location) {
         User user = lockOnboardedUser(userId);
-        DailyQuest quest = findOrAssign(user, LocalDate.now(clock));
+        DailyQuest quest = findOrAssign(user, LocalDate.now(clock), location);
         return toResponse(quest);
     }
 
     // 오늘 퀘스트 동작 : 수락 · 쪼개기 · 바꾸기 · 오늘은 쉬기
     @Transactional
-    public TodayQuestResponse act(Long userId, QuestActionRequest request) {
+    public TodayQuestResponse act(Long userId, QuestActionRequest request, GeoPoint location) {
         // 버튼 연타 · 두 화면 동시 요청이 겹치지 않도록 사용자 행을 잠근다
         User user = lockOnboardedUser(userId);
-        DailyQuest quest = findOrAssign(user, LocalDate.now(clock));
+        DailyQuest quest = findOrAssign(user, LocalDate.now(clock), location);
         LocalDateTime now = LocalDateTime.now(clock);
 
         switch (request.type()) {
@@ -67,6 +69,7 @@ public class QuestService {
                 quest.checkChangeable(); // 끝났거나 2번 다 썼으면 미션 조회 전에 409
                 List<Mission> candidates = missionRepository.findActiveByRegionIds(List.of(quest.getRegion().getId()));
                 quest.change(questAssigner.pickChange(quest.getMission(), candidates));
+                questPlaceFinder.fill(quest, originOf(user, location)); // 🆕 새 미션 장소
             }
             case SKIP -> {
                 quest.skip();
@@ -78,11 +81,14 @@ public class QuestService {
     }
 
     // 오늘 퀘스트 있으면 그대로, 없으면 배정 — 홈에서도 사용
-    // 부르는 쪽이 사용자 행을 잠그고 (findByIdForUpdate) 시작 체크 여부를 확인한 뒤 호출
-    @Transactional
-    public DailyQuest findOrAssign(User user, LocalDate today) {
+    public DailyQuest findOrAssign(User user, LocalDate today, GeoPoint location) {
         return dailyQuestRepository.findToday(user.getId(), today)
-                .orElseGet(() -> assign(user, today));
+                .orElseGet(() -> assign(user, today, location));
+    }
+
+    // 위치 없이 (완료 처리 등) → 내 구 중심
+    public DailyQuest findOrAssign(User user, LocalDate today) {
+        return findOrAssign(user, today, null);
     }
 
     // 홈 · 퀘스트가 동시에 불려도 하나만 배정되도록 사용자 행을 잠근다
@@ -106,7 +112,7 @@ public class QuestService {
         return TodayQuestResponse.of(quest, steps, restPieceAvailable);
     }
 
-    private DailyQuest assign(User user, LocalDate today) {
+    private DailyQuest assign(User user, LocalDate today, GeoPoint location) {
         // 지나온 계단
         List<UserRegion> userRegions = userRegionRepository.findByUserIdOrderByRegionStageNoAsc(user.getId());
         Set<Integer> passedStageNos = userRegions.stream()
@@ -134,6 +140,14 @@ public class QuestService {
         Mission mission = questAssigner.pick(user.getCurrentRegion().getStageNo(), user.getDifficulty(),
                 rainy, candidates, passedStageNos, foundPieceIds, recentMissionIds);
 
-        return dailyQuestRepository.save(DailyQuest.assign(user, today, mission));
+        DailyQuest quest = DailyQuest.assign(user, today, mission);
+        questPlaceFinder.fill(quest, originOf(user, location));
+
+        return dailyQuestRepository.save(quest);
+    }
+
+    // 앱이 보낸 위치 → 없으면 내 구 중심 (구도 없으면 null → 검색 안 함)
+    private GeoPoint originOf(User user, GeoPoint location) {
+        return location != null ? location : GeoPoint.of(user.getDistrict());
     }
 }
