@@ -114,7 +114,7 @@ class HomeServiceTest {
 
     private void givenHome(Weather weather) {
         given(userRepository.findByIdForUpdate(USER_ID)).willReturn(Optional.of(user));
-        given(questService.findOrAssign(user, TODAY)).willReturn(quest);
+        given(questService.findOrAssign(user, TODAY, null)).willReturn(quest);
         given(userRegionRepository.findByUserIdOrderByRegionStageNoAsc(USER_ID)).willReturn(userRegions);
         given(pieceAcquisitionRepository.countByUserId(USER_ID)).willReturn(2L);
         given(goalStepRepository.countByGoalId(1L)).willReturn(4L);
@@ -126,7 +126,7 @@ class HomeServiceTest {
     void getHome_default() {
         givenHome();
 
-        HomeResponse response = homeService.getHome(USER_ID);
+        HomeResponse response = homeService.getHome(USER_ID, null);
 
         assertThat(response.currentRegion().stageNo()).isEqualTo(3);
         assertThat(response.currentRegion().restoration()).isZero();
@@ -148,10 +148,10 @@ class HomeServiceTest {
     void getHome_welcomeBack() {
         givenHome();
         user.updateLastActiveAt(NOW.minusDays(3));
-        assertThat(homeService.getHome(USER_ID).homeState()).isEqualTo(HomeState.WELCOME_BACK);
+        assertThat(homeService.getHome(USER_ID, null).homeState()).isEqualTo(HomeState.WELCOME_BACK);
 
         user.updateLastActiveAt(NOW.minusDays(2));
-        assertThat(homeService.getHome(USER_ID).homeState()).isEqualTo(HomeState.DEFAULT);
+        assertThat(homeService.getHome(USER_ID, null).homeState()).isEqualTo(HomeState.DEFAULT);
     }
 
     @Test
@@ -161,7 +161,7 @@ class HomeServiceTest {
         ReflectionTestUtils.setField(quest, "status", QuestStatus.COMPLETED);
         user.updateLastActiveAt(NOW.minusDays(5));
 
-        assertThat(homeService.getHome(USER_ID).homeState()).isEqualTo(HomeState.COMPLETED);
+        assertThat(homeService.getHome(USER_ID, null).homeState()).isEqualTo(HomeState.COMPLETED);
     }
 
     @Test
@@ -171,12 +171,12 @@ class HomeServiceTest {
         UserRegion current = userRegions.get(2);
         ReflectionTestUtils.setField(current, "completedCount", 5);
 
-        HomeResponse response = homeService.getHome(USER_ID);
+        HomeResponse response = homeService.getHome(USER_ID, null);
         assertThat(response.currentRegion().restoration()).isEqualTo(100);
         assertThat(response.nextRegionSuggestion().stageNo()).isEqualTo(4);
 
         ReflectionTestUtils.setField(current, "lastSuggestedAt", NOW.minusDays(3));
-        assertThat(homeService.getHome(USER_ID).nextRegionSuggestion()).isNull();
+        assertThat(homeService.getHome(USER_ID, null).nextRegionSuggestion()).isNull();
     }
 
     @Test
@@ -184,7 +184,7 @@ class HomeServiceTest {
     void getHome_beforeOnboarding() {
         given(userRepository.findByIdForUpdate(USER_ID)).willReturn(Optional.of(User.createKakaoUser("동진")));
 
-        assertThatThrownBy(() -> homeService.getHome(USER_ID))
+        assertThatThrownBy(() -> homeService.getHome(USER_ID, null))
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.ONBOARDING_REQUIRED);
     }
@@ -194,7 +194,7 @@ class HomeServiceTest {
     void getHome_rainy() {
         givenHome(new Weather(Weather.RAIN, true));
 
-        HomeResponse response = homeService.getHome(USER_ID);
+        HomeResponse response = homeService.getHome(USER_ID, null);
 
         assertThat(response.weather().sky()).isEqualTo("RAIN");
         assertThat(response.weather().isRainy()).isTrue();
@@ -207,6 +207,6 @@ class HomeServiceTest {
         givenHome(new Weather(Weather.RAIN, true));
         ReflectionTestUtils.setField(quest, "status", QuestStatus.COMPLETED);
 
-        assertThat(homeService.getHome(USER_ID).homeState()).isEqualTo(HomeState.COMPLETED);
+        assertThat(homeService.getHome(USER_ID, null).homeState()).isEqualTo(HomeState.COMPLETED);
     }
 }
