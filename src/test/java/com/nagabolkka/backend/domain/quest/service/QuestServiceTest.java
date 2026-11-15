@@ -22,6 +22,7 @@ import com.nagabolkka.backend.global.common.Difficulty;
 import com.nagabolkka.backend.global.config.ClockConfig;
 import com.nagabolkka.backend.global.exception.CustomException;
 import com.nagabolkka.backend.global.exception.ErrorCode;
+import com.nagabolkka.backend.global.weather.WeatherService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -60,6 +61,7 @@ class QuestServiceTest {
     @Mock MissionStepRepository missionStepRepository;
     @Mock PieceAcquisitionRepository pieceAcquisitionRepository;
     @Mock DailyQuestRepository dailyQuestRepository;
+    @Mock WeatherService weatherService;
 
     QuestService questService;
 
@@ -73,7 +75,7 @@ class QuestServiceTest {
     void setUp() {
         questService = new QuestService(userRepository, userRegionRepository, missionRepository,
                 missionStepRepository, pieceAcquisitionRepository, dailyQuestRepository,
-                new QuestAssigner(), CLOCK);
+                new QuestAssigner(), weatherService, CLOCK);
 
         stage1 = Region.of(1, "시작의 방", "집 안", "빛의 조각", "#E8C06A", "a.png", "b.png");
         stage2 = Region.of(2, "바람의 숲", "문 앞", "바람의 조각", "#9DD49A", "a.png", "b.png");

@@ -16,6 +16,7 @@ import com.nagabolkka.backend.domain.user.repository.UserRepository;
 import com.nagabolkka.backend.global.exception.CustomException;
 import com.nagabolkka.backend.global.exception.ErrorCode;
 import com.nagabolkka.backend.domain.piece.entity.PieceType;
+import com.nagabolkka.backend.global.weather.WeatherService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -40,6 +41,7 @@ public class QuestService {
     private final PieceAcquisitionRepository pieceAcquisitionRepository;
     private final DailyQuestRepository dailyQuestRepository;
     private final QuestAssigner questAssigner;
+    private final WeatherService weatherService;
     private final Clock clock;
 
     // 오늘 퀘스트 : 있으면 그대로, 없으면 이때 배정 (하루 1개 · 멱등)
@@ -122,7 +124,8 @@ public class QuestService {
 
         Set<Long> foundPieceIds = new HashSet<>(pieceAcquisitionRepository.findFoundPieceIds(user.getId()));
 
-        boolean rainy = false;
+        // 내 구에 지금 비 · 눈 → 비 오는 날 미션 (빗소리 칸 우선)
+        boolean rainy = weatherService.isRainy(user.getDistrict());
 
         // 최근 미션 (겹치지 않게)
         List<Long> recentMissionIds = dailyQuestRepository.findRecentMissionIds(user.getId(), today,

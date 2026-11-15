@@ -14,6 +14,8 @@ import com.nagabolkka.backend.domain.user.entity.User;
 import com.nagabolkka.backend.domain.user.repository.UserRepository;
 import com.nagabolkka.backend.global.exception.CustomException;
 import com.nagabolkka.backend.global.exception.ErrorCode;
+import com.nagabolkka.backend.global.weather.Weather;
+import com.nagabolkka.backend.global.weather.WeatherService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +40,7 @@ public class HomeService {
     private final GoalStepRepository goalStepRepository;
     private final QuestService questService;
     private final NextRegionPolicy nextRegionPolicy;
+    private final WeatherService weatherService;
     private final Clock clock;
 
     // 홈 : 오늘 퀘스트가 없으면 이때 배정
@@ -69,11 +72,12 @@ public class HomeService {
 
         Goal goal = user.getCurrentGoal();
         int goalTotal = goal == null ? 0 : (int) goalStepRepository.countByGoalId(goal.getId());
-        int goalChecked = 0; // TODO M5 : user_goal_steps
+        int goalChecked = 0;
 
-        boolean rainy = false; // TODO M4 : 기상청
+        // 내 구 날씨 (배정 때 이미 불렀으면 캐시)
+        Weather weather = weatherService.get(user.getDistrict());
 
-        return HomeResponse.of(current, pieceCount, HomeState.of(quest, welcomeBack, rainy), quest,
+        return HomeResponse.of(weather, current, pieceCount, HomeState.of(quest, welcomeBack, weather.isRainy()), quest,
                 userRegions, goal, goalChecked, goalTotal, nextRegionPolicy.suggest(current, userRegions, now));
     }
 
