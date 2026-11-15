@@ -3,6 +3,10 @@ package com.nagabolkka.backend.domain.home.controller;
 import com.nagabolkka.backend.domain.home.dto.HomeResponse;
 import com.nagabolkka.backend.domain.home.service.HomeService;
 import com.nagabolkka.backend.global.exception.ErrorResponse;
+import com.nagabolkka.backend.domain.location.entity.LocationPurpose;
+import com.nagabolkka.backend.domain.location.service.LocationLogService;
+import com.nagabolkka.backend.global.geo.GeoPoint;
+import org.springframework.web.bind.annotation.RequestParam;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -24,11 +28,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class HomeController {
 
     private final HomeService homeService;
+    private final LocationLogService locationLogService;
 
     @Operation(summary = "홈",
             description = "홈 화면 전체를 한 번에 돌려줍니다. 오늘 퀘스트가 없으면 이때 배정합니다. (오늘 퀘스트 API 와 같은 퀘스트)\n\n"
                     + "- 모험의 길 `regions[].status` : LOCKED · ACTIVE · COMPLETED · PASSED (지나온 곳)\n"
-                    + "- 마지막 접속이 3일 이상 전이면 그날 첫 홈에서 `homeState: WELCOME_BACK`\n")
+                    + "- 마지막 접속이 3일 이상 전이면 그날 첫 홈에서 `homeState: WELCOME_BACK`\n"
+                    + "- `lat` · `lng` (선택) : 오늘 퀘스트를 배정할 때 근처 실제 장소 · 거리 기준입니다. 없으면 내 구 중심 (좌표는 저장하지 않음)\n")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "홈 화면",
                     content = @Content(schema = @Schema(implementation = HomeResponse.class))),
@@ -42,7 +48,15 @@ public class HomeController {
                     @ExampleObject(name = "ONBOARDING_REQUIRED", value = "{\"code\":\"ONBOARDING_REQUIRED\",\"message\":\"시작 체크를 먼저 해 주세요\"}")))
     })
     @GetMapping
-    public HomeResponse getHome(@Parameter(hidden = true) @AuthenticationPrincipal Long userId) {
-        return homeService.getHome(userId);
+    public HomeResponse getHome(@Parameter(hidden = true) @AuthenticationPrincipal Long userId,
+                                @Parameter(description = "현재 위도 (선택)", example = "37.5894")
+                                @RequestParam(required = false) Double lat,
+                                @Parameter(description = "현재 경도 (선택)", example = "127.0167")
+                                @RequestParam(required = false) Double lng) {
+        GeoPoint location = GeoPoint.ofNullable(lat, lng);
+        if (location != null) {
+            locationLogService.record(userId, LocationPurpose.HOME); // 좌표 없이 이용 사실만
+        }
+        return homeService.getHome(userId, location);
     }
 }

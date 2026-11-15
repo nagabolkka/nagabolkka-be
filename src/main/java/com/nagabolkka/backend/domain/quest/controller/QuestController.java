@@ -12,6 +12,10 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import com.nagabolkka.backend.domain.location.entity.LocationPurpose;
+import com.nagabolkka.backend.domain.location.service.LocationLogService;
+import com.nagabolkka.backend.global.geo.GeoPoint;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -32,6 +36,8 @@ public class QuestController {
 
     private final QuestService questService;
     private final QuestCompleteService questCompleteService;
+    private final LocationLogService locationLogService;
+
     @Operation(summary = "오늘 퀘스트",
             description = "오늘 퀘스트를 돌려줍니다. 아직 없으면 이때 배정합니다. (하루 1개, 여러 번 불러도 같은 퀘스트)\n\n"
                     + "쉬운 날 (EASY) 에는 지나온 계단에서 아직 못 찾은 조각 미션이 먼저 배정됩니다.")
@@ -48,8 +54,12 @@ public class QuestController {
                     @ExampleObject(name = "ONBOARDING_REQUIRED", value = "{\"code\":\"ONBOARDING_REQUIRED\",\"message\":\"시작 체크를 먼저 해 주세요\"}")))
     })
     @GetMapping("/today")
-    public TodayQuestResponse getToday(@Parameter(hidden = true) @AuthenticationPrincipal Long userId) {
-        return questService.getToday(userId);
+    public TodayQuestResponse getToday(@Parameter(hidden = true) @AuthenticationPrincipal Long userId,
+                                       @Parameter(description = "현재 위도 (선택)", example = "37.5894")
+                                       @RequestParam(required = false) Double lat,
+                                       @Parameter(description = "현재 경도 (선택)", example = "127.0167")
+                                       @RequestParam(required = false) Double lng) {
+        return questService.getToday(userId, located(userId, lat, lng));
     }
 
     @Operation(summary = "오늘 퀘스트 동작",
@@ -79,8 +89,12 @@ public class QuestController {
     })
     @PostMapping("/today/actions")
     public TodayQuestResponse act(@Parameter(hidden = true) @AuthenticationPrincipal Long userId,
-                                  @Valid @RequestBody QuestActionRequest request) {
-        return questService.act(userId, request);
+                                  @Valid @RequestBody QuestActionRequest request,
+                                  @Parameter(description = "현재 위도 (선택, 바꾸기 때 장소 기준)", example = "37.5894")
+                                  @RequestParam(required = false) Double lat,
+                                  @Parameter(description = "현재 경도 (선택)", example = "127.0167")
+                                  @RequestParam(required = false) Double lng) {
+        return questService.act(userId, request, located(userId, lat, lng));
     }
 
     @Operation(summary = "오늘 퀘스트 완료 · 기록",
@@ -112,5 +126,14 @@ public class QuestController {
     public CompleteQuestResponse complete(@Parameter(hidden = true) @AuthenticationPrincipal Long userId,
                                           @Valid @RequestBody CompleteQuestRequest request) {
         return questCompleteService.complete(userId, request);
+    }
+
+    // 위치를 받았으면 이용 사실만 기록 (좌표 저장 안 함)
+    private GeoPoint located(Long userId, Double lat, Double lng) {
+        GeoPoint location = GeoPoint.ofNullable(lat, lng);
+        if (location != null) {
+            locationLogService.record(userId, LocationPurpose.QUEST);
+        }
+        return location;
     }
 }

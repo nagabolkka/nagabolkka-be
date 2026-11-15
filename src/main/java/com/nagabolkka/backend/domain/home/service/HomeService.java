@@ -16,9 +16,11 @@ import com.nagabolkka.backend.global.exception.CustomException;
 import com.nagabolkka.backend.global.exception.ErrorCode;
 import com.nagabolkka.backend.global.weather.Weather;
 import com.nagabolkka.backend.global.weather.WeatherService;
+import com.nagabolkka.backend.global.geo.GeoPoint;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.GetMapping;
 
 import java.time.Clock;
 import java.time.LocalDate;
@@ -45,7 +47,7 @@ public class HomeService {
 
     // 홈 : 오늘 퀘스트가 없으면 이때 배정
     @Transactional
-    public HomeResponse getHome(Long userId) {
+    public HomeResponse getHome(Long userId, GeoPoint location) {
         // 홈(4) · 퀘스트(5) 동시 호출에도 퀘스트 1개 → 사용자 행 잠금
         User user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.UNAUTHORIZED));
@@ -60,7 +62,7 @@ public class HomeService {
         boolean welcomeBack = isWelcomeBack(user.getLastActiveAt(), today);
         user.updateLastActiveAt(now);
 
-        DailyQuest quest = questService.findOrAssign(user, today);
+        DailyQuest quest = questService.findOrAssign(user, today, location);
 
         List<UserRegion> userRegions = userRegionRepository.findByUserIdOrderByRegionStageNoAsc(userId);
         UserRegion current = userRegions.stream()
