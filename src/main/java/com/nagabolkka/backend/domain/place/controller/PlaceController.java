@@ -8,6 +8,10 @@ import com.nagabolkka.backend.domain.place.entity.PlaceCategory;
 import com.nagabolkka.backend.domain.place.service.PlaceService;
 import com.nagabolkka.backend.global.exception.ErrorResponse;
 import com.nagabolkka.backend.global.geo.GeoPoint;
+import com.nagabolkka.backend.domain.place.dto.SavePlaceResponse;
+import com.nagabolkka.backend.domain.place.service.SavedPlaceService;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -30,6 +34,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class PlaceController {
 
     private final PlaceService placeService;
+    private final SavedPlaceService savedPlaceService;
     private final LocationLogService locationLogService;
 
     @Operation(summary = "장소 목록",
@@ -71,5 +76,42 @@ public class PlaceController {
             locationLogService.record(userId, LocationPurpose.PLACE_SEARCH); // 좌표 없이 이용 사실만
         }
         return placeService.getPlaces(userId, new PlaceFilter(category, free, solo, within), location);
+    }
+
+    @Operation(summary = "미션으로 담기",
+            description = "고른 장소를 오늘 (또는 내일) 퀘스트로 담습니다. 바꾸기 횟수는 줄지 않아요.\n\n"
+                    + "- 오늘 퀘스트가 없음 · 배정 · 진행 중 → 바로 교체 `REPLACED_TODAY` (진행 중이면 프론트가 확인창 먼저)\n"
+                    + "- 오늘 퀘스트를 완료 · 쉬기 했으면 → 내일 첫 퀘스트 `RESERVED_TOMORROW` (`questId: null`)\n"
+                    + "- 기다리는 담기는 1개 : 새로 담으면 예전 것은 취소\n"
+                    + "- 담기 퀘스트 완료 조각 : 2 · 3계단 담기 칸, 1 · 4 · 5계단 도전 칸\n"
+                    + "- `lat` · `lng` (선택) : 거리 기준. 없으면 내 구 중심 (좌표는 저장하지 않음)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "담기 결과",
+                    content = @Content(schema = @Schema(implementation = SavePlaceResponse.class))),
+            @ApiResponse(responseCode = "401", description = "토큰 없음 · 만료",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class), examples = {
+                            @ExampleObject(name = "UNAUTHORIZED", value = "{\"code\":\"UNAUTHORIZED\",\"message\":\"다시 로그인해 주세요\"}"),
+                            @ExampleObject(name = "AUTH_TOKEN_EXPIRED", value = "{\"code\":\"AUTH_TOKEN_EXPIRED\",\"message\":\"로그인이 만료됐어요\"}")
+                    })),
+            @ApiResponse(responseCode = "404", description = "없는 장소 · 기간이 끝난 장소",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class), examples =
+                    @ExampleObject(name = "NOT_FOUND", value = "{\"code\":\"NOT_FOUND\",\"message\":\"찾을 수 없어요\"}"))),
+            @ApiResponse(responseCode = "409", description = "시작 체크 전",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class), examples =
+                    @ExampleObject(name = "ONBOARDING_REQUIRED", value = "{\"code\":\"ONBOARDING_REQUIRED\",\"message\":\"시작 체크를 먼저 해 주세요\"}")))
+    })
+
+    @PostMapping("/{placeId}/save")
+    public SavePlaceResponse save(@Parameter(hidden = true) @AuthenticationPrincipal Long userId,
+                                  @Parameter(description = "장소 id", example = "1") @PathVariable Long placeId,
+                                  @Parameter(description = "현재 위도 (선택)", example = "37.5894")
+                                  @RequestParam(required = false) Double lat,
+                                  @Parameter(description = "현재 경도 (선택)", example = "127.0167")
+                                  @RequestParam(required = false) Double lng) {
+        GeoPoint location = GeoPoint.ofNullable(lat, lng);
+        if (location != null) {
+            locationLogService.record(userId, LocationPurpose.QUEST); // 퀘스트 배정에 씀
+        }
+        return savedPlaceService.save(userId, placeId, location);
     }
 }
