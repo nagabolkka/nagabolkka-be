@@ -60,7 +60,7 @@ public record HomeResponse(
         static TodayQuest from(DailyQuest quest) {
             Mission mission = quest.getMission();
             return new TodayQuest(quest.getId(), quest.getStatus(), quest.getSource(),
-                    quest.getRegion().getStageNo(), mission.getTitle(), mission.getDifficulty(),
+                    quest.getRegion().getStageNo(), quest.getTitle(), mission.getDifficulty(),
                     quest.getPlaceName(), quest.getDistanceM(), mission.getEstMinutes(), quest.isSplit(),
                     new Reward(mission.getRewardPiece().getId(), mission.getRewardPiece().getName()));
         }
