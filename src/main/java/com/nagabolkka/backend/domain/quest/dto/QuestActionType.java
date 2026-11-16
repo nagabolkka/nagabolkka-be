@@ -6,5 +6,6 @@ public enum QuestActionType {
     SPLIT,
     CHANGE,
     SKIP,
-    REVISIT
+    REVISIT,
+    PRACTICE_MISSION
 }

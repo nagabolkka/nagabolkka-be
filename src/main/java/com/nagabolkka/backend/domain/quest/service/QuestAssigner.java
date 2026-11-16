@@ -70,10 +70,13 @@ public class QuestAssigner {
                 .orElseThrow(() -> new IllegalStateException("지나온 계단 미션 시드가 없어요")); // 시드 누락 = 버그 → 500
     }
 
-    // 바꾸기 : 같은 계단 · 같은 난이도 미션 중 지금 미션 다음 것 (id 순, 마지막이면 처음) · 빗소리 미션 제외
+    // 같은 계단 · 같은 난이도 안에서 다음 미션 (id 순으로 돌아감 · 빗소리 제외)
     public Mission pickChange(Mission current, List<Mission> candidates) {
-        int stageNo = current.getRegion().getStageNo();
+        return pickChange(current, current.getRegion().getStageNo(), candidates);
+    }
 
+    // stageNo = 퀘스트 계단 (연습 후 미션은 미션 계단과 다를 수 있음)
+    public Mission pickChange(Mission current, int stageNo, List<Mission> candidates) {
         List<Mission> options = candidates.stream()
                 .filter(m -> m.getRegion().getStageNo() == stageNo)
                 .filter(m -> m.getDifficulty() == current.getDifficulty())
