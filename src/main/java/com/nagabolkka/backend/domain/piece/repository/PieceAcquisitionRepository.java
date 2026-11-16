@@ -2,6 +2,7 @@ package com.nagabolkka.backend.domain.piece.repository;
 
 import com.nagabolkka.backend.domain.piece.entity.PieceAcquisition;
 import com.nagabolkka.backend.domain.piece.entity.PieceType;
+import com.nagabolkka.backend.domain.piece.entity.AcquireSource;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -32,4 +33,7 @@ public interface PieceAcquisitionRepository extends JpaRepository<PieceAcquisiti
 
     // 이 종류 조각을 받은 적 있는지 (쉼의 조각 안내 : REFLECTION)
     boolean existsByUserIdAndPieceType(Long userId, PieceType type);
+
+    // 이 목표로 희망 조각을 받았는지 (내 목표 hopePieceReceived · 처음 4/4 판단)
+    boolean existsByUserIdAndSourceAndGoalId(Long userId, AcquireSource source, Long goalId);
 }
