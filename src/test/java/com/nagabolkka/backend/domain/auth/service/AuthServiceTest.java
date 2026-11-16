@@ -54,7 +54,7 @@ class AuthServiceTest {
 
     @BeforeEach
     void setUp() {
-        KakaoProperties kakaoProperties = new KakaoProperties("rest-key", "", List.of(REDIRECT_URI));
+        KakaoProperties kakaoProperties = new KakaoProperties("rest-key", "", List.of(REDIRECT_URI), null);
         authService = new AuthService(kakaoOAuthClient, userRepository, hashUtil, signUpService, tokenService, kakaoProperties);
     }
 

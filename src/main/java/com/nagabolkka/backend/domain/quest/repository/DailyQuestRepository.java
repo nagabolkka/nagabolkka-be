@@ -29,4 +29,14 @@ public interface DailyQuestRepository extends JpaRepository<DailyQuest, Long> {
             order by q.questDate desc
             """)
     List<Long> findRecentMissionIds(@Param("userId") Long userId, @Param("today") LocalDate today, Pageable pageable);
+
+    // 모험 일지 : 기간 안 날짜별 상태 · 기분 (기록 없는 퀘스트는 mood null)
+    @Query("""
+            select new com.nagabolkka.backend.domain.quest.repository.DayRecord(q.questDate, q.status, r.mood)
+            from DailyQuest q
+            left join QuestRecord r on r.dailyQuest = q
+            where q.user.id = :userId and q.questDate between :from and :to
+            """)
+    List<DayRecord> findDayRecords(@Param("userId") Long userId,
+                                   @Param("from") LocalDate from, @Param("to") LocalDate to);
 }
