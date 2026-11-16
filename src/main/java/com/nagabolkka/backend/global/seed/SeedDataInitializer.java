@@ -16,6 +16,10 @@ import com.nagabolkka.backend.domain.piece.repository.PieceRepository;
 import com.nagabolkka.backend.domain.region.entity.Region;
 import com.nagabolkka.backend.domain.region.repository.RegionRepository;
 import com.nagabolkka.backend.global.common.Difficulty;
+import com.nagabolkka.backend.domain.place.entity.Place;
+import com.nagabolkka.backend.domain.place.entity.PlaceCategory;
+import com.nagabolkka.backend.domain.place.repository.PlaceRepository;
+import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
@@ -490,6 +494,53 @@ public class SeedDataInitializer implements ApplicationRunner {
             Map.entry("청년센터", "청년공간")
     );
 
+    // stageNo = 어느 계단 미션으로 쓰이는지 · 날짜는 "yyyy-MM-dd" 또는 null (상시)
+    private record PlaceSeed(PlaceCategory category, String name, String address, String lat, String lng,
+                             boolean free, boolean soloOk, String openHours, String description,
+                             int stageNo, String validFrom, String validTo, String source) {
+    }
+
+    private static final String KAKAO = "카카오맵 확인";
+    private static final String EXAMPLE = "예시"; // 실제 프로그램 데이터로 교체 예정
+
+    // KAKAO 장소 좌표 · 주소 = 11-16 카카오 로컬 확인값 · 운영 시간은 확인 전이라 null (FE "방문 전 확인")
+    private static final List<PlaceSeed> PLACES = List.of(
+            // 도서관 (3계단)
+            new PlaceSeed(PlaceCategory.LIBRARY, "아리랑도서관", "서울 성북구 아리랑로 82",
+                    "37.5998972", "127.0139784", true, true, null,
+                    "조용한 열람실과 무인 대출기가 있어요.", 3, null, null, KAKAO),
+            new PlaceSeed(PlaceCategory.LIBRARY, "보문숲길도서관", "서울 성북구 보문사길 20",
+                    "37.5842530", "127.0162614", true, true, null,
+                    "동네에 있는 작은 공공도서관이에요. 들러서 책 한 권 펼쳐 봐요.", 3, null, null, KAKAO),
+            new PlaceSeed(PlaceCategory.LIBRARY, "종암동새날도서관", "서울 성북구 종암로 98-8",
+                    "37.5991107", "127.0353081", true, true, null,
+                    "열람실에서 조용히 머물다 오기 좋은 도서관이에요.", 3, null, null, KAKAO),
+            // 청년공간 (4계단)
+            new PlaceSeed(PlaceCategory.YOUTH_CENTER, "서울청년센터 성북", "서울 성북구 종암로5길 7",
+                    "37.5943930", "127.0354440", true, true, null,
+                    "예약 없이 들러 쉬어갈 수 있는 청년 라운지예요.", 4, null, null, KAKAO),
+            new PlaceSeed(PlaceCategory.YOUTH_CENTER, "청년공간 동선이음", "서울 성북구 아리랑로 50",
+                    "37.5973508", "127.0150378", true, true, null,
+                    "청년들이 들러 쉬거나 모임을 할 수 있는 공간이에요.", 4, null, null, KAKAO),
+            // 프로그램 (4계단 · 기간) — 장소는 위 실제 장소에 맞춤
+            new PlaceSeed(PlaceCategory.PROGRAM, "토요 북토크 <천천히 읽기>", "서울 성북구 아리랑로 82 · 아리랑도서관",
+                    "37.5998972", "127.0139784", true, true, "매주 토 14:00-15:30",
+                    "뒷자리에서 듣기만 해도 괜찮은 작은 북토크예요.", 4, "2026-11-01", "2026-12-31", EXAMPLE),
+            new PlaceSeed(PlaceCategory.PROGRAM, "반려식물 분갈이 원데이 클래스", "서울 성북구 보문동",
+                    "37.5800000", "127.0280000", false, true, "매주 일 15:00-16:30",
+                    "작은 화분 하나를 직접 분갈이해서 가져가요.", 4, "2026-11-01", "2026-11-15", EXAMPLE), // 기간 지남 확인용
+            new PlaceSeed(PlaceCategory.PROGRAM, "청년 마음 글쓰기 모임", "서울 성북구 종암로5길 7 · 서울청년센터 성북",
+                    "37.5943930", "127.0354440", true, true, "격주 목 19:00-20:30",
+                    "주제 하나로 짧게 써보고, 원하면 나누는 모임이에요.", 4, "2026-11-01", "2026-12-31", EXAMPLE),
+            // 봉사 (5계단)
+            new PlaceSeed(PlaceCategory.VOLUNTEER, "성북천 화단 가꾸기 봉사", "서울 성북구 성북천 산책로",
+                    "37.5870000", "127.0090000", true, false, "매주 수 10:00-12:00",
+                    "성북천 산책로 화단에 꽃을 심고 물을 줘요.", 5, null, null, EXAMPLE),
+            new PlaceSeed(PlaceCategory.VOLUNTEER, "보호소 강아지 산책 봉사", "서울 성북구 종암동",
+                    "37.6100000", "127.0350000", true, true, "매주 토 10:00-12:00",
+                    "보호소 강아지와 근처 공원을 함께 걸어요.", 5, null, null, EXAMPLE)
+    );
+
     private final DistrictRepository districtRepository;
     private final RegionRepository regionRepository;
     private final GoalRepository goalRepository;
@@ -497,6 +548,7 @@ public class SeedDataInitializer implements ApplicationRunner {
     private final PieceRepository pieceRepository;
     private final MissionRepository missionRepository;
     private final MissionStepRepository missionStepRepository;
+    private final PlaceRepository placeRepository;
 
     @Override
     @Transactional
@@ -507,7 +559,8 @@ public class SeedDataInitializer implements ApplicationRunner {
         seedPieces();
         seedMissions();
         seedKakaoQueries();
-        log.info("시드 데이터 확인 완료 (구 {} · 지역 {} · 목표 {} · 조각 {} · 미션 {})",
+        seedPlaces();
+        log.info("시드 데이터 확인 완료 (구 {} · 지역 {} · 목표 {} · 조각 {} · 미션 {} · 장소 {})",
                 districtRepository.count(), regionRepository.count(), goalRepository.count(),
                 pieceRepository.count(), missionRepository.count());
     }
@@ -588,6 +641,22 @@ public class SeedDataInitializer implements ApplicationRunner {
         }
         if (updated > 0) {
             log.info("미션 카카오 검색어 {}개 채움", updated);
+        }
+    }
+
+    // 같은 이름 장소가 있으면 건너뜀 (운영 DB 에도 새 장소만 추가)
+    private void seedPlaces() {
+        District district = districtRepository.findAll().get(0); // MVP 성북구 1개
+        for (PlaceSeed seed : PLACES) {
+            if (placeRepository.existsByName(seed.name())) {
+                continue;
+            }
+            placeRepository.save(Place.of(seed.category(), seed.name(), district, seed.address(),
+                    new BigDecimal(seed.lat()), new BigDecimal(seed.lng()), seed.free(), seed.soloOk(),
+                    seed.openHours(), seed.description(), findRegion(seed.stageNo()),
+                    seed.validFrom() == null ? null : LocalDate.parse(seed.validFrom()),
+                    seed.validTo() == null ? null : LocalDate.parse(seed.validTo()),
+                    seed.source()));
         }
     }
 
