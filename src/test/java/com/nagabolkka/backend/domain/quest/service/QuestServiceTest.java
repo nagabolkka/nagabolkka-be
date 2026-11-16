@@ -15,6 +15,7 @@ import com.nagabolkka.backend.domain.quest.repository.DailyQuestRepository;
 import com.nagabolkka.backend.domain.region.entity.Region;
 import com.nagabolkka.backend.domain.region.entity.RegionStatus;
 import com.nagabolkka.backend.domain.region.entity.UserRegion;
+import com.nagabolkka.backend.domain.practice.repository.PracticeSessionRepository;
 import com.nagabolkka.backend.domain.region.repository.UserRegionRepository;
 import com.nagabolkka.backend.domain.user.entity.User;
 import com.nagabolkka.backend.domain.user.repository.UserRepository;
@@ -64,6 +65,7 @@ class QuestServiceTest {
     @Mock WeatherService weatherService;
     @Mock QuestPlaceFinder questPlaceFinder;
     @Mock PlaceQuestFactory placeQuestFactory;
+    @Mock PracticeSessionRepository practiceSessionRepository;
 
     QuestService questService;
 
@@ -77,7 +79,8 @@ class QuestServiceTest {
     void setUp() {
         questService = new QuestService(userRepository, userRegionRepository, missionRepository,
                 missionStepRepository, pieceAcquisitionRepository, dailyQuestRepository,
-                new QuestAssigner(), weatherService, questPlaceFinder, placeQuestFactory, CLOCK);
+                new QuestAssigner(), weatherService, questPlaceFinder, placeQuestFactory,
+                practiceSessionRepository, CLOCK);
 
         stage1 = Region.of(1, "시작의 방", "집 안", "빛의 조각", "#E8C06A", "a.png", "b.png");
         stage2 = Region.of(2, "바람의 숲", "문 앞", "바람의 조각", "#9DD49A", "a.png", "b.png");
