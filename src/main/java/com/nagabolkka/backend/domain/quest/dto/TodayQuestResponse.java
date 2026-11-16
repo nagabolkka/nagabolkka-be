@@ -78,15 +78,15 @@ public record TodayQuestResponse(
                 quest.getStatus(),
                 quest.getSource(),
                 new RegionInfo(quest.getRegion().getStageNo(), quest.getRegion().getName()),
-                mission.getTitle(),
-                mission.getDescription(),
+                quest.getTitle(),
+                quest.getDescription(),
                 mission.getDifficulty(),
                 mission.isIndoor(),
                 new PlaceInfo(quest.getPlaceName(), quest.getPlaceLat(), quest.getPlaceLng(), distanceM, walkMinutes),
                 mission.getEstMinutes(),
                 new RewardInfo(piece.getId(), piece.getName(), piece.getRestoreText()),
                 quest.isSplit(),
-                steps.stream().map(s -> new StepInfo(s.getStepNo(), s.getContent())).toList(),
+                steps.stream().map(s -> new StepInfo(s.getStepNo(), quest.fill(s.getContent()))).toList(),
                 quest.getChangeRemaining(),
                 restPieceAvailable
         );

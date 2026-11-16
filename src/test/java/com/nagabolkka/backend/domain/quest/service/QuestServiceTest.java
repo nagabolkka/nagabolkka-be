@@ -63,6 +63,7 @@ class QuestServiceTest {
     @Mock DailyQuestRepository dailyQuestRepository;
     @Mock WeatherService weatherService;
     @Mock QuestPlaceFinder questPlaceFinder;
+    @Mock PlaceQuestFactory placeQuestFactory;
 
     QuestService questService;
 
@@ -76,7 +77,7 @@ class QuestServiceTest {
     void setUp() {
         questService = new QuestService(userRepository, userRegionRepository, missionRepository,
                 missionStepRepository, pieceAcquisitionRepository, dailyQuestRepository,
-                new QuestAssigner(), weatherService, questPlaceFinder, CLOCK);
+                new QuestAssigner(), weatherService, questPlaceFinder, placeQuestFactory, CLOCK);
 
         stage1 = Region.of(1, "시작의 방", "집 안", "빛의 조각", "#E8C06A", "a.png", "b.png");
         stage2 = Region.of(2, "바람의 숲", "문 앞", "바람의 조각", "#9DD49A", "a.png", "b.png");

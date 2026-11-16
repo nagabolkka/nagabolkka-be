@@ -30,6 +30,7 @@ import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -44,6 +45,7 @@ public class QuestService {
     private final QuestAssigner questAssigner;
     private final WeatherService weatherService;
     private final QuestPlaceFinder questPlaceFinder;
+    private final PlaceQuestFactory placeQuestFactory;
     private final Clock clock;
 
     // 오늘 퀘스트 : 있으면 그대로, 없으면 이때 배정 (하루 1개 · 멱등)
@@ -124,6 +126,15 @@ public class QuestService {
 
     // 자동 배정 : 현재 계단 미션만 (지나온 계단은 REVISIT 으로)
     private DailyQuest assign(User user, LocalDate today, GeoPoint location) {
+
+        GeoPoint origin = originOf(user, location);
+
+        // 1순위 : 동네 지도에서 담아 둔 장소 (기간 끝났으면 취소 후 평소 배정)
+        Optional<DailyQuest> savedPlaceQuest = placeQuestFactory.assignWaiting(user, today, origin);
+        if (savedPlaceQuest.isPresent()) {
+            return savedPlaceQuest.get();
+        }
+
         Region current = user.getCurrentRegion();
         List<Mission> candidates = missionRepository.findActiveByRegionIds(List.of(current.getId()));
 
