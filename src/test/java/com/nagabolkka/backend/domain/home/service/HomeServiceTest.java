@@ -25,6 +25,7 @@ import com.nagabolkka.backend.global.exception.ErrorCode;
 import com.nagabolkka.backend.domain.region.service.NextRegionPolicy;
 import com.nagabolkka.backend.global.weather.Weather;
 import com.nagabolkka.backend.global.weather.WeatherService;
+import com.nagabolkka.backend.domain.goal.repository.UserGoalStepRepository;
 import static org.mockito.ArgumentMatchers.any;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -60,6 +61,7 @@ class HomeServiceTest {
     @Mock UserRegionRepository userRegionRepository;
     @Mock PieceAcquisitionRepository pieceAcquisitionRepository;
     @Mock GoalStepRepository goalStepRepository;
+    @Mock UserGoalStepRepository userGoalStepRepository;
     @Mock QuestService questService;
     @Mock WeatherService weatherService;
 
@@ -74,7 +76,7 @@ class HomeServiceTest {
     @BeforeEach
     void setUp() {
         homeService = new HomeService(userRepository, userRegionRepository, pieceAcquisitionRepository,
-                goalStepRepository, questService, new NextRegionPolicy(), weatherService, CLOCK);
+                goalStepRepository, userGoalStepRepository, questService, new NextRegionPolicy(), weatherService, CLOCK);
 
         regions = IntStream.rangeClosed(1, 5)
                 .mapToObj(stage -> {
@@ -118,6 +120,7 @@ class HomeServiceTest {
         given(userRegionRepository.findByUserIdOrderByRegionStageNoAsc(USER_ID)).willReturn(userRegions);
         given(pieceAcquisitionRepository.countByUserId(USER_ID)).willReturn(2L);
         given(goalStepRepository.countByGoalId(1L)).willReturn(4L);
+        given(userGoalStepRepository.countChecked(USER_ID, 1L)).willReturn(2L);
         given(weatherService.get(any())).willReturn(weather);
     }
 
@@ -137,6 +140,7 @@ class HomeServiceTest {
         assertThat(response.pieceCount()).isEqualTo(2);
         assertThat(response.goal().name()).isEqualTo("취업");
         assertThat(response.goal().total()).isEqualTo(4);
+        assertThat(response.goal().checked()).isEqualTo(2);
         assertThat(response.weather().isRainy()).isFalse();
         assertThat(response.homeState()).isEqualTo(HomeState.DEFAULT); // 처음 접속 (lastActiveAt null)
         assertThat(response.nextRegionSuggestion()).isNull();
