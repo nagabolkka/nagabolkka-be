@@ -3,6 +3,7 @@ package com.nagabolkka.backend.domain.piece.entity;
 import com.nagabolkka.backend.domain.quest.entity.DailyQuest;
 import com.nagabolkka.backend.domain.user.entity.User;
 import com.nagabolkka.backend.global.common.BaseEntity;
+import com.nagabolkka.backend.domain.goal.entity.Goal;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -52,12 +53,24 @@ public class PieceAcquisition extends BaseEntity {
     @OnDelete(action = OnDeleteAction.CASCADE)
     private DailyQuest dailyQuest;
 
+    // 희망 조각을 어느 목표로 받았는지 (목표마다 처음 4/4 에 1번)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "goal_id")
+    private Goal goal;
+
     public static PieceAcquisition of(User user, Piece piece, AcquireSource source, DailyQuest dailyQuest) {
         PieceAcquisition acquisition = new PieceAcquisition();
         acquisition.user = user;
         acquisition.piece = piece;
         acquisition.source = source;
         acquisition.dailyQuest = dailyQuest;
+        return acquisition;
+    }
+
+    // 목표 4/4 완성 → 희망 조각 (source = GOAL)
+    public static PieceAcquisition ofGoal(User user, Piece piece, Goal goal) {
+        PieceAcquisition acquisition = of(user, piece, AcquireSource.GOAL, null);
+        acquisition.goal = goal;
         return acquisition;
     }
 }

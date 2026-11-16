@@ -17,6 +17,7 @@ import com.nagabolkka.backend.global.exception.ErrorCode;
 import com.nagabolkka.backend.global.weather.Weather;
 import com.nagabolkka.backend.global.weather.WeatherService;
 import com.nagabolkka.backend.global.geo.GeoPoint;
+import com.nagabolkka.backend.domain.goal.repository.UserGoalStepRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,6 +41,7 @@ public class HomeService {
     private final UserRegionRepository userRegionRepository;
     private final PieceAcquisitionRepository pieceAcquisitionRepository;
     private final GoalStepRepository goalStepRepository;
+    private final UserGoalStepRepository userGoalStepRepository;
     private final QuestService questService;
     private final NextRegionPolicy nextRegionPolicy;
     private final WeatherService weatherService;
@@ -74,7 +76,7 @@ public class HomeService {
 
         Goal goal = user.getCurrentGoal();
         int goalTotal = goal == null ? 0 : (int) goalStepRepository.countByGoalId(goal.getId());
-        int goalChecked = 0;
+        int goalChecked = goal == null ? 0 : (int) userGoalStepRepository.countChecked(userId, goal.getId());
 
         // 내 구 날씨 (배정 때 이미 불렀으면 캐시)
         Weather weather = weatherService.get(user.getDistrict());
