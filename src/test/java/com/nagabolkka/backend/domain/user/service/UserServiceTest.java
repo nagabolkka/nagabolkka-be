@@ -12,6 +12,9 @@ import com.nagabolkka.backend.domain.user.repository.UserRepository;
 import com.nagabolkka.backend.global.exception.CustomException;
 import com.nagabolkka.backend.global.exception.ErrorCode;
 import com.nagabolkka.backend.domain.piece.repository.PieceAcquisitionRepository;
+import com.nagabolkka.backend.domain.plus.entity.PlusInterest;
+import com.nagabolkka.backend.domain.plus.entity.PriceOption;
+import com.nagabolkka.backend.domain.plus.repository.PlusInterestRepository;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -39,6 +42,8 @@ class UserServiceTest {
     GoalRepository goalRepository;
     @Mock
     PieceAcquisitionRepository pieceAcquisitionRepository;
+    @Mock
+    PlusInterestRepository plusInterestRepository;
 
     @InjectMocks
     UserService userService;
@@ -142,5 +147,19 @@ class UserServiceTest {
 
         assertThat(response.pieceCount()).isEqualTo(8);
         assertThat(response.collection()).isEqualTo("6/25");
+    }
+
+    @Test
+    @DisplayName("내 정보 : 플러스 응답이 있으면 plusInterest (옵션 · 금액)")
+    void getMyInfo_plusInterest() {
+        ReflectionTestUtils.setField(user, "id", USER_ID);
+        given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+        given(plusInterestRepository.findByUserId(USER_ID))
+                .willReturn(Optional.of(PlusInterest.of(user, PriceOption.CUSTOM, 2500)));
+
+        MyInfoResponse response = userService.getMyInfo(USER_ID);
+
+        assertThat(response.plusInterest().priceOption()).isEqualTo(PriceOption.CUSTOM);
+        assertThat(response.plusInterest().customPrice()).isEqualTo(2500);
     }
 }
