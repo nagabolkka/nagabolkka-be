@@ -4,20 +4,21 @@ import com.nagabolkka.backend.domain.mission.entity.Mission;
 import com.nagabolkka.backend.domain.mission.entity.MissionStep;
 import com.nagabolkka.backend.domain.mission.repository.MissionRepository;
 import com.nagabolkka.backend.domain.mission.repository.MissionStepRepository;
+import com.nagabolkka.backend.domain.piece.entity.PieceType;
 import com.nagabolkka.backend.domain.piece.repository.PieceAcquisitionRepository;
 import com.nagabolkka.backend.domain.quest.dto.QuestActionRequest;
 import com.nagabolkka.backend.domain.quest.dto.TodayQuestResponse;
 import com.nagabolkka.backend.domain.quest.entity.DailyQuest;
 import com.nagabolkka.backend.domain.quest.repository.DailyQuestRepository;
+import com.nagabolkka.backend.domain.region.entity.Region;
 import com.nagabolkka.backend.domain.region.entity.UserRegion;
 import com.nagabolkka.backend.domain.region.repository.UserRegionRepository;
 import com.nagabolkka.backend.domain.user.entity.User;
 import com.nagabolkka.backend.domain.user.repository.UserRepository;
 import com.nagabolkka.backend.global.exception.CustomException;
 import com.nagabolkka.backend.global.exception.ErrorCode;
-import com.nagabolkka.backend.domain.piece.entity.PieceType;
-import com.nagabolkka.backend.global.weather.WeatherService;
 import com.nagabolkka.backend.global.geo.GeoPoint;
+import com.nagabolkka.backend.global.weather.WeatherService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -29,7 +30,6 @@ import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -54,7 +54,7 @@ public class QuestService {
         return toResponse(quest);
     }
 
-    // 오늘 퀘스트 동작 : 수락 · 쪼개기 · 바꾸기 · 오늘은 쉬기
+    // 오늘 퀘스트 동작 : 수락 · 쪼개기 · 바꾸기 · 오늘은 쉬기 · 지나온 계단 미션 받기
     @Transactional
     public TodayQuestResponse act(Long userId, QuestActionRequest request, GeoPoint location) {
         // 버튼 연타 · 두 화면 동시 요청이 겹치지 않도록 사용자 행을 잠근다
@@ -69,11 +69,21 @@ public class QuestService {
                 quest.checkChangeable(); // 끝났거나 2번 다 썼으면 미션 조회 전에 409
                 List<Mission> candidates = missionRepository.findActiveByRegionIds(List.of(quest.getRegion().getId()));
                 quest.change(questAssigner.pickChange(quest.getMission(), candidates));
-                questPlaceFinder.fill(quest, originOf(user, location)); // 🆕 새 미션 장소
+                questPlaceFinder.fill(quest, originOf(user, location)); // 새 미션 장소
             }
             case SKIP -> {
                 quest.skip();
                 user.changeDifficulty(DifficultyPolicy.afterSkip(user.getDifficulty()));
+            }
+            case REVISIT -> {
+                quest.checkChangeable(); // 끝났거나 2번 다 썼으면 409 (조회 전에)
+                Region stage = passedStage(user, request.stageNo());
+                List<Mission> stageMissions = missionRepository.findActiveByRegionIds(List.of(stage.getId()));
+                Set<Long> foundPieceIds = new HashSet<>(pieceAcquisitionRepository.findFoundPieceIds(user.getId()));
+                List<Long> recentMissionIds = dailyQuestRepository.findRecentMissionIds(user.getId(),
+                        LocalDate.now(clock), PageRequest.of(0, QuestAssigner.RECENT_DAYS));
+                quest.change(questAssigner.pickRevisit(stageMissions, foundPieceIds, recentMissionIds)); // 바꾸기 횟수 +1
+                questPlaceFinder.fill(quest, originOf(user, location));
             }
         }
 
@@ -112,23 +122,10 @@ public class QuestService {
         return TodayQuestResponse.of(quest, steps, restPieceAvailable);
     }
 
+    // 자동 배정 : 현재 계단 미션만 (지나온 계단은 REVISIT 으로)
     private DailyQuest assign(User user, LocalDate today, GeoPoint location) {
-        // 지나온 계단
-        List<UserRegion> userRegions = userRegionRepository.findByUserIdOrderByRegionStageNoAsc(user.getId());
-        Set<Integer> passedStageNos = userRegions.stream()
-                .filter(UserRegion::isPassed)
-                .map(ur -> ur.getRegion().getStageNo())
-                .collect(Collectors.toSet());
-
-        // 후보 미션 : 현재 + 지나온 계단
-        Set<Long> regionIds = userRegions.stream()
-                .filter(UserRegion::isPassed)
-                .map(ur -> ur.getRegion().getId())
-                .collect(Collectors.toCollection(HashSet::new));
-        regionIds.add(user.getCurrentRegion().getId());
-        List<Mission> candidates = missionRepository.findActiveByRegionIds(regionIds);
-
-        Set<Long> foundPieceIds = new HashSet<>(pieceAcquisitionRepository.findFoundPieceIds(user.getId()));
+        Region current = user.getCurrentRegion();
+        List<Mission> candidates = missionRepository.findActiveByRegionIds(List.of(current.getId()));
 
         // 내 구에 지금 비 · 눈 → 비 오는 날 미션 (빗소리 칸 우선)
         boolean rainy = weatherService.isRainy(user.getDistrict());
@@ -137,17 +134,29 @@ public class QuestService {
         List<Long> recentMissionIds = dailyQuestRepository.findRecentMissionIds(user.getId(), today,
                 PageRequest.of(0, QuestAssigner.RECENT_DAYS));
 
-        Mission mission = questAssigner.pick(user.getCurrentRegion().getStageNo(), user.getDifficulty(),
-                rainy, candidates, passedStageNos, foundPieceIds, recentMissionIds);
+        Mission mission = questAssigner.pick(current.getStageNo(), user.getDifficulty(), rainy,
+                candidates, recentMissionIds);
 
         DailyQuest quest = DailyQuest.assign(user, today, mission);
-        questPlaceFinder.fill(quest, originOf(user, location));
-
+        questPlaceFinder.fill(quest, originOf(user, location)); // 바깥 미션이면 실제 장소
         return dailyQuestRepository.save(quest);
     }
 
     // 앱이 보낸 위치 → 없으면 내 구 중심 (구도 없으면 null → 검색 안 함)
     private GeoPoint originOf(User user, GeoPoint location) {
         return location != null ? location : GeoPoint.of(user.getDistrict());
+    }
+
+    // 지나온 계단만 (현재 · 잠긴 · 없는 계단 → 400)
+    private Region passedStage(User user, Integer stageNo) {
+        if (stageNo == null || stageNo == user.getCurrentRegion().getStageNo()) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+        return userRegionRepository.findByUserIdOrderByRegionStageNoAsc(user.getId()).stream()
+                .filter(UserRegion::isPassed)
+                .map(UserRegion::getRegion)
+                .filter(region -> region.getStageNo() == stageNo)
+                .findFirst()
+                .orElseThrow(() -> new CustomException(ErrorCode.INVALID_INPUT));
     }
 }
