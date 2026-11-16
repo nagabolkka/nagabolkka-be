@@ -70,13 +70,17 @@ public class QuestController {
                     + "- `SPLIT` 쪼개기 (수락 포함) → `isSplit: true` · `steps` 3개 (이미 쪼갰으면 그대로)\n"
                     + "- `CHANGE` 바꾸기 → 같은 계단 · 같은 난이도 다른 미션 · `ASSIGNED` 로 · 하루 2번 (`changeRemaining`)\n"
                     + "- `SKIP` 오늘은 쉬기 → `SKIPPED`\n"
-                    + "- `REVISIT` 지나온 계단 미션 받기 (`stageNo` 필수) → 그 계단에서 못 찾은 조각 중 가장 쉬운 미션 · 바꾸기 횟수 1번 사용\n\n"
-                    + "`lat` · `lng` (선택) : `CHANGE` · `REVISIT` 으로 바깥 미션이 되면 근처 실제 장소 기준. 없으면 내 구 중심\n\n"
+                    + "- `REVISIT` 지나온 계단 미션 받기 (`stageNo` 필수) → 그 계단에서 못 찾은 조각 중 가장 쉬운 미션 · 바꾸기 횟수 1번 사용\n"
+                    + "- `PRACTICE_MISSION` 연습 후 실제 미션 담기 (`missionId` 필수 = 연습 끝 응답의 `followMission.missionId`) "
+                    + "→ `source: PRACTICE` · 계단은 내 현재 계단 · 바꾸기 횟수 그대로. "
+                    + "오늘 끝낸 연습이 제안한 미션만 가능 (아니면 404), 이미 같은 미션이면 그대로\n\n"
+                    + "`lat` · `lng` (선택) : `CHANGE` · `REVISIT` · `PRACTICE_MISSION` 으로 바깥 미션이 되면 근처 실제 장소 기준. 없으면 내 구 중심\n\n"
                     + "완료 · 쉬기 한 퀘스트에는 어떤 동작도 할 수 없어요. (409)")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "동작 후 오늘 퀘스트",
                     content = @Content(schema = @Schema(implementation = TodayQuestResponse.class))),
-            @ApiResponse(responseCode = "400", description = "type 없음 · 없는 type · REVISIT 인데 stageNo 없음 · 지나온 계단 아님 (현재 · 잠긴 계단)",
+            @ApiResponse(responseCode = "400", description = "type 없음 · 없는 type · REVISIT 인데 stageNo 없음 · 지나온 계단 아님 (현재 · 잠긴 계단) · "
+                    + "PRACTICE_MISSION 인데 missionId 없음",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class), examples =
                     @ExampleObject(name = "INVALID_INPUT", value = "{\"code\":\"INVALID_INPUT\",\"message\":\"입력값을 다시 확인해 주세요\"}"))),
             @ApiResponse(responseCode = "401", description = "토큰 없음 · 만료",
@@ -84,6 +88,9 @@ public class QuestController {
                             @ExampleObject(name = "UNAUTHORIZED", value = "{\"code\":\"UNAUTHORIZED\",\"message\":\"다시 로그인해 주세요\"}"),
                             @ExampleObject(name = "AUTH_TOKEN_EXPIRED", value = "{\"code\":\"AUTH_TOKEN_EXPIRED\",\"message\":\"로그인이 만료됐어요\"}")
                     })),
+            @ApiResponse(responseCode = "404", description = "PRACTICE_MISSION : 오늘 끝낸 연습에서 제안받지 않은 미션 · 없는 미션",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class), examples =
+                    @ExampleObject(name = "NOT_FOUND", value = "{\"code\":\"NOT_FOUND\",\"message\":\"찾을 수 없어요\"}"))),
             @ApiResponse(responseCode = "409", description = "이미 끝난 퀘스트 · 바꾸기 횟수 초과 (CHANGE · REVISIT) · 시작 체크 전",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class), examples = {
                             @ExampleObject(name = "QUEST_ALREADY_DONE", value = "{\"code\":\"QUEST_ALREADY_DONE\",\"message\":\"이미 끝난 퀘스트예요\"}"),
@@ -94,7 +101,7 @@ public class QuestController {
     @PostMapping("/today/actions")
     public TodayQuestResponse act(@Parameter(hidden = true) @AuthenticationPrincipal Long userId,
                                   @Valid @RequestBody QuestActionRequest request,
-                                  @Parameter(description = "현재 위도 (선택, 바꾸기 · 지나온 계단 미션 장소 기준)", example = "37.5894")
+                                  @Parameter(description = "현재 위도 (선택, 바꾸기 · 지나온 계단 · 연습 후 미션 장소 기준)", example = "37.5894")
                                   @RequestParam(required = false) Double lat,
                                   @Parameter(description = "현재 경도 (선택)", example = "127.0167")
                                   @RequestParam(required = false) Double lng) {

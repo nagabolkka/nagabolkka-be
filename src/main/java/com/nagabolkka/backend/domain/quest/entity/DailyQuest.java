@@ -143,6 +143,19 @@ public class DailyQuest extends BaseEntity {
         return place != null && place.getId().equals(placeId);
     }
 
+    // 오늘 퀘스트를 연습 후 실제 미션으로 교체 : 처음 상태로 · 바꾸기 횟수 그대로
+    // 계단은 내 현재 계단 (미션 시드 계단이 아직 잠겨 있어도 복원도가 거기 쌓이지 않도록)
+    public void replaceWithPractice(Mission followMission, Region currentRegion) {
+        checkNotDone();
+        replaceMission(followMission);
+        this.region = currentRegion;
+        this.source = QuestSource.PRACTICE;
+    }
+
+    public boolean isPracticeMission(Long missionId) {
+        return source == QuestSource.PRACTICE && mission.getId().equals(missionId);
+    }
+
     // 화면에 보일 제목 · 설명 (담기 퀘스트면 {place} → 장소 이름 · 설명은 장소 설명)
     public String getTitle() {
         return fill(mission.getTitle());
