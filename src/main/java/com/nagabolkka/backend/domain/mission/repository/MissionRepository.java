@@ -29,4 +29,7 @@ public interface MissionRepository extends JpaRepository<Mission, Long> {
 
     // 시드 : 계단별 담기 미션이 이미 있는지
     boolean existsByRegionIdAndPlaceType(Long regionId, PlaceType placeType);
+
+    // 시드 : 연습 후 미션이 이미 있으면 그걸 시나리오에 연결
+    Optional<Mission> findFirstByTitle(String title);
 }

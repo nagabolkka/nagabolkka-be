@@ -105,6 +105,14 @@ public class Mission extends BaseEntity {
         return mission;
     }
 
+    // 연습 후 실제 미션 : 시나리오마다 1개 · active = false → 자동 배정 · 바꾸기 후보에서 빠짐 (PRACTICE_MISSION 으로만)
+    public static Mission followMission(Region region, Piece rewardPiece, String title, String description,
+                                        Difficulty difficulty, boolean indoor, String placeName, int estMinutes) {
+        Mission mission = of(region, rewardPiece, title, description, difficulty, indoor, false, placeName, estMinutes);
+        mission.active = false;
+        return mission;
+    }
+
     // 빗소리 칸 미션 → 비 오는 날에만 배정
     public boolean isRainyOnly() {
         return rewardPiece.getType() == PieceType.RAINY;
