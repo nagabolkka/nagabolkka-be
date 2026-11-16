@@ -143,6 +143,9 @@ public class SeedDataInitializer implements ApplicationRunner {
             new PieceSeed(5, 5, "희망 조각", GOAL, "새로운 세상에 아침이 밝았어", "내 목표 준비 4단계 모두 완료하기")
     );
 
+    // 도감 25칸 밖 보너스 조각 (플러스 첫 응답) — 지역 · 칸 없음
+    private static final String BONUS_PIECE_NAME = "첫 발견 조각";
+
     // 오늘 퀘스트로 배정되는 미션 19개 (칸 1~3 · 1~4계단 칸 4 빗소리). 칸 5 · 연습 · 목표 조각은 다른 API 에서 지급
     private static final List<MissionSeed> MISSIONS = List.of(
             // 1 · 시작의 방
@@ -593,6 +596,7 @@ public class SeedDataInitializer implements ApplicationRunner {
         seedRegions();
         seedGoals();
         seedPieces();
+        seedBonusPiece();
         seedMissions();
         seedPlaceMissions();
         seedPracticeScenarios();
@@ -646,6 +650,15 @@ public class SeedDataInitializer implements ApplicationRunner {
             pieceRepository.save(Piece.of(region, seed.slotNo(), seed.name(), seed.type(),
                     seed.restoreText(), seed.hint()));
         }
+    }
+
+    // 보너스 조각 (BONUS 1개뿐 · 있으면 건너뜀)
+    private void seedBonusPiece() {
+        if (pieceRepository.findFirstByType(PieceType.BONUS).isPresent()) {
+            return;
+        }
+        pieceRepository.save(Piece.of(null, null, BONUS_PIECE_NAME, PieceType.BONUS,
+                "루미 플러스에 관심을 남겨 줬어", "루미 플러스에 관심 남기기"));
     }
 
     // 같은 제목 미션이 이미 있으면 건너뜀 (보상 조각 하나에 미션 여러 개)

@@ -3,6 +3,7 @@ package com.nagabolkka.backend.domain.user.service;
 import com.nagabolkka.backend.domain.goal.entity.Goal;
 import com.nagabolkka.backend.domain.goal.repository.GoalRepository;
 import com.nagabolkka.backend.domain.piece.repository.PieceAcquisitionRepository;
+import com.nagabolkka.backend.domain.plus.repository.PlusInterestRepository;
 import com.nagabolkka.backend.domain.user.dto.MyInfoResponse;
 import com.nagabolkka.backend.domain.user.dto.UpdateMyInfoRequest;
 import com.nagabolkka.backend.domain.user.entity.User;
@@ -21,6 +22,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final GoalRepository goalRepository;
     private final PieceAcquisitionRepository pieceAcquisitionRepository;
+    private final PlusInterestRepository plusInterestRepository;
 
     // 내 정보 (마이페이지)
     public MyInfoResponse getMyInfo(Long userId) {
@@ -42,11 +44,12 @@ public class UserService {
         return toResponse(user);
     }
 
-    // 조각 수 · 찾은 칸 수는 조각 기록에서 센다
+    // 조각 수 · 찾은 칸 수는 조각 기록에서 센다 · 플러스 설문 응답 (없으면 null)
     private MyInfoResponse toResponse(User user) {
         return MyInfoResponse.from(user,
                 pieceAcquisitionRepository.countByUserId(user.getId()),
-                pieceAcquisitionRepository.countFoundSlots(user.getId()));
+                pieceAcquisitionRepository.countFoundSlots(user.getId()),
+                plusInterestRepository.findByUserId(user.getId()).orElse(null));
     }
 
     private User findUser(Long userId) {
