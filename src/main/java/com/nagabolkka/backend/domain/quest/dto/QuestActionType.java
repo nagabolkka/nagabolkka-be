@@ -5,5 +5,6 @@ public enum QuestActionType {
     ACCEPT,
     SPLIT,
     CHANGE,
-    SKIP
+    SKIP,
+    REVISIT
 }
