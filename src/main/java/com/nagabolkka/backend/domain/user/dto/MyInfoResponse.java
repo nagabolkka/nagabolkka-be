@@ -1,6 +1,8 @@
 package com.nagabolkka.backend.domain.user.dto;
 
 import com.nagabolkka.backend.domain.goal.entity.Goal;
+import com.nagabolkka.backend.domain.plus.entity.PlusInterest;
+import com.nagabolkka.backend.domain.plus.entity.PriceOption;
 import com.nagabolkka.backend.domain.region.entity.Region;
 import com.nagabolkka.backend.domain.user.entity.Role;
 import com.nagabolkka.backend.domain.user.entity.User;
@@ -16,10 +18,10 @@ public record MyInfoResponse(
         @Schema(description = "현재 지역 (시작 체크 전이면 null)", nullable = true)
         CurrentRegionInfo currentRegion,
 
-        @Schema(description = "모은 조각 수 (같은 조각 여러 번 포함 · 홈과 같음)", example = "8")
+        @Schema(description = "모은 조각 수 (같은 조각 여러 번 · 보너스 조각 포함 · 홈과 같음)", example = "8")
         int pieceCount,
 
-        @Schema(description = "도감 진행 (찾은 칸 / 전체 25칸)", example = "6/25")
+        @Schema(description = "도감 진행 (찾은 칸 / 전체 25칸 · 보너스 조각 제외)", example = "6/25")
         String collection,
 
         @Schema(description = "사회 연결 목표 (시작 체크 전이면 null)", nullable = true)
@@ -31,7 +33,7 @@ public record MyInfoResponse(
         @Schema(description = "기관 공유 동의 (값만 저장, 공유 기능은 확장 범위)", example = "false")
         boolean shareWithAgency,
 
-        @Schema(description = "루미 플러스 설문 응답 (응답 전 · 플러스 기능 전까지 null)", nullable = true)
+        @Schema(description = "루미 플러스 설문 응답 (응답 전이면 null) → 시트를 설문 / 응답 바꾸기 중 하나로", nullable = true)
         PlusInterestInfo plusInterest,
 
         @Schema(description = "권한", example = "USER")
@@ -60,13 +62,17 @@ public record MyInfoResponse(
     }
 
     public record PlusInterestInfo(
-            @Schema(example = "PRICE_1900") String priceOption,
-            @Schema(example = "null", nullable = true) Integer customPrice,
-            @Schema(example = "2026-11-01T14:00:00") LocalDateTime respondedAt
+            @Schema(description = "PRICE_1900 · PRICE_3900 · CUSTOM", example = "PRICE_1900") PriceOption priceOption,
+            @Schema(description = "CUSTOM 일 때만 (원)", example = "2500", nullable = true) Integer customPrice,
+            @Schema(description = "마지막 응답 시각 (plus_interests.updated_at)", example = "2026-11-01T14:00:00") LocalDateTime respondedAt
     ) {
+        public static PlusInterestInfo from(PlusInterest interest) {
+            return interest == null ? null
+                    : new PlusInterestInfo(interest.getPriceOption(), interest.getCustomPrice(), interest.getUpdatedAt());
+        }
     }
 
-    public static MyInfoResponse from(User user, long pieceCount, long foundSlots) {
+    public static MyInfoResponse from(User user, long pieceCount, long foundSlots, PlusInterest plusInterest) {
         return new MyInfoResponse(
                 user.getNickname(),
                 CurrentRegionInfo.from(user.getCurrentRegion()),
@@ -75,7 +81,7 @@ public record MyInfoResponse(
                 GoalInfo.from(user.getCurrentGoal()),
                 user.getDistrict() == null ? null : user.getDistrict().getId(),
                 user.isShareWithAgency(),
-                null,
+                PlusInterestInfo.from(plusInterest),
                 user.getRole()
         );
     }
