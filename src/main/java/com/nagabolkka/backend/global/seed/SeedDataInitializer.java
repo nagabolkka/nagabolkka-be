@@ -20,6 +20,8 @@ import com.nagabolkka.backend.domain.place.entity.Place;
 import com.nagabolkka.backend.domain.place.entity.PlaceCategory;
 import com.nagabolkka.backend.domain.place.repository.PlaceRepository;
 import com.nagabolkka.backend.domain.mission.entity.PlaceType;
+import com.nagabolkka.backend.domain.practice.entity.PracticeScenario;
+import com.nagabolkka.backend.domain.practice.repository.PracticeScenarioRepository;
 import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -64,6 +66,11 @@ public class SeedDataInitializer implements ApplicationRunner {
     private record MissionSeed(int stageNo, int slotNo, String title, String description,
                                Difficulty difficulty, boolean indoor, boolean rainyOk,
                                String placeName, int estMinutes, List<String> steps) {
+    }
+
+    // 연습 시나리오 : 끝내면 받는 조각 (계단 · 칸) + 연습 후 실제 미션
+    private record PracticeSeed(String code, String title, String description, String partnerRole,
+                                int rewardStage, int rewardSlot, MissionSeed follow) {
     }
 
     private static final List<RegionSeed> REGIONS = List.of(
@@ -495,6 +502,27 @@ public class SeedDataInitializer implements ApplicationRunner {
             Map.entry("청년센터", "청년공간")
     );
 
+    private static final int PRACTICE_MAX_TURNS = 3;
+
+    // 코드는 AI 서버 scenarios/*.yaml 이름과 같게. 첫 방문 → 4계단 5칸 · 첫 전화 · 모의 면접 → 5계단 4칸 (ERD)
+    private static final List<PracticeSeed> PRACTICES = List.of(
+            new PracticeSeed("FIRST_CALL", "첫 전화", "도서관에 프로그램 문의하기", "도서관 안내 직원", 5, 4,
+                    new MissionSeed(5, 3, "도서관에 프로그램 문의 전화하기",
+                            "연습실에서 한 말 그대로 도서관에 전화해 프로그램 하나만 물어봐요. 끊고 나면 끝이에요.",
+                            Difficulty.CHALLENGE, true, false, "집 (전화)", 5,
+                            List.of("물어볼 말 한 줄 적기", "도서관 전화번호 찾기", "전화 걸어 한 가지 물어보기"))),
+            new PracticeSeed("FIRST_VISIT", "첫 방문", "도서관에서 회원증 만들기", "도서관 1층 안내데스크 직원", 4, 5,
+                    new MissionSeed(3, 2, "도서관에 가서 회원증 만들기",
+                            "신분증만 챙기면 5분이면 만들어요. 연습실에서 한 말 그대로 해 봐요.",
+                            Difficulty.NORMAL, false, false, "종암동새날도서관", 30,
+                            List.of("신분증 챙기기", "1층 안내데스크까지 가기", "회원증 만들어 달라고 말하기"))),
+            new PracticeSeed("INTERVIEW", "모의 면접", "동네 카페 아르바이트 면접 보기", "동네 카페 점장", 5, 4,
+                    new MissionSeed(5, 1, "동네 아르바이트 공고 하나 찾아보기",
+                            "알바 앱이나 동네 게시판에서 마음에 드는 공고 하나만 저장해요. 지원은 안 해도 괜찮아요.",
+                            Difficulty.EASY, true, false, "알바 앱 · 동네 게시판", 10,
+                            List.of("알바 앱 하나 열기", "지역을 우리 동네로 맞추기", "마음에 드는 공고 하나 저장하기")))
+    );
+
     // 담기 미션 쪼개기 단계 ({place} = 장소 이름)
     private static final List<String> PLACE_MISSION_STEPS = List.of(
             "가는 길 한 번 확인하기",
@@ -556,6 +584,7 @@ public class SeedDataInitializer implements ApplicationRunner {
     private final MissionRepository missionRepository;
     private final MissionStepRepository missionStepRepository;
     private final PlaceRepository placeRepository;
+    private final PracticeScenarioRepository practiceScenarioRepository;
 
     @Override
     @Transactional
@@ -566,6 +595,7 @@ public class SeedDataInitializer implements ApplicationRunner {
         seedPieces();
         seedMissions();
         seedPlaceMissions();
+        seedPracticeScenarios();
         seedKakaoQueries();
         seedPlaces();
         log.info("시드 데이터 확인 완료 (구 {} · 지역 {} · 목표 {} · 조각 {} · 미션 {} · 장소 {})",
@@ -685,6 +715,35 @@ public class SeedDataInitializer implements ApplicationRunner {
                     .mapToObj(i -> MissionStep.of(mission, i + 1, PLACE_MISSION_STEPS.get(i)))
                     .toList());
         }
+    }
+
+    // 연습 시나리오 3개 + 연습 후 실제 미션 (없을 때만)
+    private void seedPracticeScenarios() {
+        for (PracticeSeed seed : PRACTICES) {
+            if (practiceScenarioRepository.existsByCode(seed.code())) {
+                continue;
+            }
+            Mission follow = missionRepository.findFirstByTitle(seed.follow().title())
+                    .orElseGet(() -> saveFollowMission(seed.follow()));
+            practiceScenarioRepository.save(PracticeScenario.of(seed.code(), seed.title(), seed.description(),
+                    seed.partnerRole(), PRACTICE_MAX_TURNS, false,
+                    findPiece(seed.rewardStage(), seed.rewardSlot()), follow));
+        }
+    }
+
+    private Mission saveFollowMission(MissionSeed seed) {
+        Mission mission = missionRepository.save(Mission.followMission(findRegion(seed.stageNo()),
+                findPiece(seed.stageNo(), seed.slotNo()), seed.title(), seed.description(),
+                seed.difficulty(), seed.indoor(), seed.placeName(), seed.estMinutes()));
+        missionStepRepository.saveAll(IntStream.range(0, seed.steps().size())
+                .mapToObj(i -> MissionStep.of(mission, i + 1, seed.steps().get(i)))
+                .toList());
+        return mission;
+    }
+
+    private Piece findPiece(int stageNo, int slotNo) {
+        return pieceRepository.findByRegionIdAndSlotNo(findRegion(stageNo).getId(), slotNo)
+                .orElseThrow(() -> new IllegalStateException("조각 시드가 없어요: " + stageNo + "계단 " + slotNo + "칸"));
     }
 
     private Region findRegion(int stageNo) {

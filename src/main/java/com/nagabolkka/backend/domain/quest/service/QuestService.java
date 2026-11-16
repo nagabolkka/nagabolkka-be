@@ -19,6 +19,8 @@ import com.nagabolkka.backend.global.exception.CustomException;
 import com.nagabolkka.backend.global.exception.ErrorCode;
 import com.nagabolkka.backend.global.geo.GeoPoint;
 import com.nagabolkka.backend.global.weather.WeatherService;
+import com.nagabolkka.backend.domain.practice.entity.PracticeStatus;
+import com.nagabolkka.backend.domain.practice.repository.PracticeSessionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -46,6 +48,7 @@ public class QuestService {
     private final WeatherService weatherService;
     private final QuestPlaceFinder questPlaceFinder;
     private final PlaceQuestFactory placeQuestFactory;
+    private final PracticeSessionRepository practiceSessionRepository;
     private final Clock clock;
 
     // 오늘 퀘스트 : 있으면 그대로, 없으면 이때 배정 (하루 1개 · 멱등)
@@ -70,7 +73,8 @@ public class QuestService {
             case CHANGE -> {
                 quest.checkChangeable(); // 끝났거나 2번 다 썼으면 미션 조회 전에 409
                 List<Mission> candidates = missionRepository.findActiveByRegionIds(List.of(quest.getRegion().getId()));
-                quest.change(questAssigner.pickChange(quest.getMission(), candidates));
+                // 퀘스트 계단 기준 (연습 후 미션이면 미션 계단과 다름)
+                quest.change(questAssigner.pickChange(quest.getMission(), quest.getRegion().getStageNo(), candidates));
                 questPlaceFinder.fill(quest, originOf(user, location)); // 새 미션 장소
             }
             case SKIP -> {
@@ -86,6 +90,14 @@ public class QuestService {
                         LocalDate.now(clock), PageRequest.of(0, QuestAssigner.RECENT_DAYS));
                 quest.change(questAssigner.pickRevisit(stageMissions, foundPieceIds, recentMissionIds)); // 바꾸기 횟수 +1
                 questPlaceFinder.fill(quest, originOf(user, location));
+            }
+
+            case PRACTICE_MISSION -> {
+                Mission follow = practiceFollowMission(user, request.missionId()); // 오늘 끝낸 연습이 제안한 것만
+                if (!quest.isPracticeMission(follow.getId())) { // 두 번 눌러도 진행 상태 유지
+                    quest.replaceWithPractice(follow, user.getCurrentRegion()); // 끝난 퀘스트 → 409
+                    questPlaceFinder.fill(quest, originOf(user, location)); // 첫 방문 미션 → 근처 도서관
+                }
             }
         }
 
@@ -169,5 +181,18 @@ public class QuestService {
                 .filter(region -> region.getStageNo() == stageNo)
                 .findFirst()
                 .orElseThrow(() -> new CustomException(ErrorCode.INVALID_INPUT));
+    }
+
+    // PRACTICE_MISSION : 오늘 COMPLETED 한 연습 세션의 시나리오가 제안한 미션만 (다른 값 · 어제 연습 → 404)
+    private Mission practiceFollowMission(User user, Long missionId) {
+        if (missionId == null) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+        LocalDateTime todayStart = LocalDate.now(clock).atStartOfDay();
+        if (!practiceSessionRepository.existsFollowMission(user.getId(), missionId, PracticeStatus.COMPLETED, todayStart)) {
+            throw new CustomException(ErrorCode.NOT_FOUND);
+        }
+        return missionRepository.findById(missionId)
+                .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND));
     }
 }

@@ -23,9 +23,12 @@ import com.nagabolkka.backend.domain.user.entity.User;
 import com.nagabolkka.backend.domain.user.repository.UserRepository;
 import com.nagabolkka.backend.global.common.Difficulty;
 import com.nagabolkka.backend.global.config.ClockConfig;
+import com.nagabolkka.backend.domain.practice.entity.PracticeStatus;
+import com.nagabolkka.backend.domain.quest.entity.QuestSource;
 import com.nagabolkka.backend.global.exception.CustomException;
 import com.nagabolkka.backend.global.exception.ErrorCode;
 import com.nagabolkka.backend.global.weather.WeatherService;
+import com.nagabolkka.backend.domain.practice.repository.PracticeSessionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -67,6 +70,7 @@ class QuestActionServiceTest {
     @Mock WeatherService weatherService;
     @Mock QuestPlaceFinder questPlaceFinder;
     @Mock PlaceQuestFactory placeQuestFactory;
+    @Mock PracticeSessionRepository practiceSessionRepository;
 
     QuestService questService;
 
@@ -82,7 +86,8 @@ class QuestActionServiceTest {
     void setUp() {
         questService = new QuestService(userRepository, userRegionRepository, missionRepository,
                 missionStepRepository, pieceAcquisitionRepository, dailyQuestRepository,
-                new QuestAssigner(), weatherService, questPlaceFinder, placeQuestFactory, CLOCK);
+                new QuestAssigner(), weatherService, questPlaceFinder, placeQuestFactory,
+                practiceSessionRepository, CLOCK);
 
         stage2 = Region.of(2, "바람의 숲", "문 앞", "바람의 조각", "#9DD49A", "a.png", "b.png");
         ReflectionTestUtils.setField(stage2, "id", 2L);
@@ -253,5 +258,63 @@ class QuestActionServiceTest {
         act(QuestActionType.SKIP);
 
         assertThat(user.getDifficulty()).isEqualTo(Difficulty.EASY);
+    }
+
+    // 연습 후 실제 미션 : 5계단 시드 · 도전 (사용자는 2계단)
+    private Mission followMission() {
+        Region stage5 = Region.of(5, "새로운 세상", "사회 연결", "희망의 조각", "#BFB2F2", "a.png", "b.png");
+        ReflectionTestUtils.setField(stage5, "id", 5L);
+        Piece piece = Piece.of(stage5, 3, "도전 조각", PieceType.CHALLENGE, "복원 문구", "힌트");
+        ReflectionTestUtils.setField(piece, "id", 503L);
+        Mission follow = Mission.followMission(stage5, piece, "도서관에 프로그램 문의 전화하기", "설명",
+                Difficulty.CHALLENGE, true, "집 (전화)", 5);
+        ReflectionTestUtils.setField(follow, "id", 77L);
+        return follow;
+    }
+
+    @Test
+    @DisplayName("PRACTICE_MISSION → 오늘 퀘스트 교체 · source PRACTICE · 내 현재 계단 · 바꾸기 횟수 그대로")
+    void practiceMission() {
+        givenTodayQuest();
+        Mission follow = followMission();
+        given(practiceSessionRepository.existsFollowMission(USER_ID, 77L, PracticeStatus.COMPLETED, TODAY.atStartOfDay()))
+                .willReturn(true);
+        given(missionRepository.findById(77L)).willReturn(Optional.of(follow));
+
+        TodayQuestResponse response = questService.act(USER_ID,
+                new QuestActionRequest(QuestActionType.PRACTICE_MISSION, null, 77L), null);
+
+        assertThat(response.source()).isEqualTo(QuestSource.PRACTICE);
+        assertThat(response.title()).isEqualTo("도서관에 프로그램 문의 전화하기");
+        assertThat(response.region().stageNo()).isEqualTo(2); // 미션 시드 계단(5) 이 아니라 내 현재 계단
+        assertThat(response.status()).isEqualTo(QuestStatus.ASSIGNED);
+        assertThat(response.changeRemaining()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("PRACTICE_MISSION · 오늘 연습에서 제안받지 않은 미션 → 404 · 퀘스트 그대로")
+    void practiceMission_notSuggested() {
+        givenTodayQuest();
+        given(practiceSessionRepository.existsFollowMission(USER_ID, 77L, PracticeStatus.COMPLETED, TODAY.atStartOfDay()))
+                .willReturn(false);
+
+        assertThatThrownBy(() -> questService.act(USER_ID,
+                new QuestActionRequest(QuestActionType.PRACTICE_MISSION, null, 77L), null))
+                .extracting("errorCode").isEqualTo(ErrorCode.NOT_FOUND);
+        assertThat(quest.getMission()).isSameAs(slot1);
+    }
+
+    @Test
+    @DisplayName("연습 후 미션에서 CHANGE → 내 현재 계단 · 같은 난이도(도전) 평소 미션 · 횟수 -1")
+    void change_fromPracticeMission() {
+        quest.replaceWithPractice(followMission(), stage2);
+        givenTodayQuest();
+        given(missionRepository.findActiveByRegionIds(List.of(2L))).willReturn(List.of(slot1, slot2, slot3, rainy));
+
+        TodayQuestResponse response = act(QuestActionType.CHANGE);
+
+        assertThat(response.title()).isEqualTo(slot3.getTitle());
+        assertThat(response.source()).isEqualTo(QuestSource.AUTO);
+        assertThat(response.changeRemaining()).isEqualTo(1);
     }
 }
