@@ -26,6 +26,7 @@ spring:
 kakao:
   rest-api-key: ${KAKAO_REST_API_KEY:}
   client-secret: ${KAKAO_CLIENT_SECRET:}
+  admin-key: ${KAKAO_ADMIN_KEY:}
 
   # 카카오 디벨로퍼스에도 같은 값 등록
   allowed-redirect-uris:
