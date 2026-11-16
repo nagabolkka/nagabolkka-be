@@ -8,9 +8,14 @@ import java.util.List;
 public record KakaoProperties(
         String restApiKey,
         String clientSecret,
-        List<String> allowedRedirectUris
+        List<String> allowedRedirectUris,
+        String adminKey // 탈퇴 연결 끊기 (서버 전용)
 ) {
     public KakaoProperties {
         allowedRedirectUris = allowedRedirectUris == null ? List.of() : List.copyOf(allowedRedirectUris);
+    }
+
+    public boolean hasAdminKey() {
+        return adminKey != null && !adminKey.isBlank();
     }
 }

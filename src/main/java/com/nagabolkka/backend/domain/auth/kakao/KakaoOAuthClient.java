@@ -22,6 +22,7 @@ public class KakaoOAuthClient {
 
     private static final String TOKEN_URL = "https://kauth.kakao.com/oauth/token";
     private static final String USER_INFO_URL = "https://kapi.kakao.com/v2/user/me";
+    private static final String UNLINK_URL = "https://kapi.kakao.com/v1/user/unlink";
 
     private final KakaoProperties kakaoProperties;
     private final RestClient restClient;
@@ -55,6 +56,32 @@ public class KakaoOAuthClient {
             // 인가 코드 만료 · 재사용, redirect_uri 불일치, 키 오류, 카카오 장애 등
             log.warn("카카오 로그인 실패: {}", e.getMessage());
             throw new CustomException(ErrorCode.KAKAO_LOGIN_FAILED);
+        }
+    }
+
+    // 탈퇴 : 카카오 연결 끊기 (Admin 키). 실패해도 예외 없이 false → 탈퇴는 그대로 진행
+    public boolean unlink(Long kakaoId) {
+        if (!kakaoProperties.hasAdminKey()) {
+            log.warn("카카오 연결 끊기 건너뜀: KAKAO_ADMIN_KEY 없음");
+            return false;
+        }
+        MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        form.add("target_id_type", "user_id");
+        form.add("target_id", String.valueOf(kakaoId));
+
+        try {
+            restClient.post()
+                    .uri(UNLINK_URL)
+                    .header(HttpHeaders.AUTHORIZATION, "KakaoAK " + kakaoProperties.adminKey())
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                    .body(form)
+                    .retrieve()
+                    .toBodilessEntity();
+            return true;
+        } catch (RestClientException e) {
+            // 회원번호 · 키는 남기지 않음 (예외 이름만). 이미 끊긴 사용자도 여기로 옴
+            log.warn("카카오 연결 끊기 실패: {}", e.getClass().getSimpleName());
+            return false;
         }
     }
 
