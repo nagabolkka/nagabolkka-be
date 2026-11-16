@@ -52,71 +52,69 @@ class QuestAssignerTest {
                 .findFirst().orElseThrow();
     }
 
+    private List<Mission> stage(int stageNo) {
+        return missions.stream().filter(m -> m.getRegion().getStageNo() == stageNo).toList();
+    }
+
     @Test
     @DisplayName("보통 날 : 현재 계단(3)의 보통 미션")
     void normalDay() {
-        Mission picked = assigner.pick(3, Difficulty.NORMAL, false, missions, Set.of(1, 2), Set.of());
+        Mission picked = assigner.pick(3, Difficulty.NORMAL, false, missions);
 
         assertThat(picked.getRegion().getStageNo()).isEqualTo(3);
         assertThat(picked.getDifficulty()).isEqualTo(Difficulty.NORMAL);
     }
 
     @Test
-    @DisplayName("쉬운 날 + 지나온 계단 1 · 2 : 1계단 쉬움 미션부터")
-    void easyDay_passedFirst() {
-        Mission picked = assigner.pick(3, Difficulty.EASY, false, missions, Set.of(1, 2), Set.of());
-
-        assertThat(picked.getRegion().getStageNo()).isEqualTo(1);
-        assertThat(picked.getRewardPiece().getType()).isEqualTo(PieceType.EASY);
-    }
-
-    @Test
-    @DisplayName("쉬운 날 : 이미 찾은 조각은 건너뛰고 다음 조각 (1계단 보통)")
-    void easyDay_skipFound() {
-        Set<Long> found = Set.of(pieceOf(1, PieceType.EASY).getId());
-
-        Mission picked = assigner.pick(3, Difficulty.EASY, false, missions, Set.of(1, 2), found);
-
-        assertThat(picked.getRewardPiece()).isSameAs(pieceOf(1, PieceType.NORMAL));
-    }
-
-    @Test
-    @DisplayName("쉬운 날 : 지나온 계단 조각을 다 찾았으면 현재 계단 쉬움")
-    void easyDay_allPassedFound() {
-        Set<Long> found = Set.of(
-                pieceOf(1, PieceType.EASY).getId(), pieceOf(1, PieceType.NORMAL).getId(),
-                pieceOf(1, PieceType.CHALLENGE).getId(),
-                pieceOf(2, PieceType.EASY).getId(), pieceOf(2, PieceType.NORMAL).getId(),
-                pieceOf(2, PieceType.CHALLENGE).getId());
-
-        Mission picked = assigner.pick(3, Difficulty.EASY, false, missions, Set.of(1, 2), found);
+    @DisplayName("쉬운 날 : 지나온 계단이 있어도 현재 계단(3) 쉬움 미션")
+    void easyDay_currentStage() {
+        Mission picked = assigner.pick(3, Difficulty.EASY, false, missions);
 
         assertThat(picked.getRewardPiece()).isSameAs(pieceOf(3, PieceType.EASY));
     }
 
     @Test
-    @DisplayName("쉬운 날 + 지나온 계단 없음(1계단 출발) : 1계단 쉬움")
-    void easyDay_noPassed() {
-        Mission picked = assigner.pick(1, Difficulty.EASY, false, missions, Set.of(), Set.of());
-
-        assertThat(picked.getRewardPiece()).isSameAs(pieceOf(1, PieceType.EASY));
-    }
-
-    @Test
-    @DisplayName("맑은 날에는 빗소리 미션이 배정되지 않음 (지나온 계단 포함)")
+    @DisplayName("맑은 날에는 빗소리 미션이 배정되지 않음")
     void clearDay_noRainyOnly() {
         for (Difficulty difficulty : Difficulty.values()) {
-            Mission picked = assigner.pick(3, difficulty, false, missions, Set.of(1, 2), Set.of());
-            assertThat(picked.isRainyOnly()).isFalse();
+            assertThat(assigner.pick(3, difficulty, false, missions).isRainyOnly()).isFalse();
         }
     }
 
     @Test
     @DisplayName("비 오는 날 : 현재 계단 빗소리 미션 · 5계단은 도전 미션")
     void rainyDay() {
-        assertThat(assigner.pick(3, Difficulty.NORMAL, true, missions, Set.of(1, 2), Set.of()).getRewardPiece())
+        assertThat(assigner.pick(3, Difficulty.NORMAL, true, missions).getRewardPiece())
                 .isSameAs(pieceOf(3, PieceType.RAINY));
-        assertThat(assigner.pick(5, Difficulty.EASY, true, missions, Set.of(), Set.of()).getRewardPiece())
+        assertThat(assigner.pick(5, Difficulty.EASY, true, missions).getRewardPiece())
                 .isSameAs(pieceOf(5, PieceType.CHALLENGE));
+    }
+
+    @Test
+    @DisplayName("지나온 계단 미션 받기 : 못 찾은 조각 중 가장 쉬운 난이도 (처음엔 쉬움)")
+    void revisit_easiestUnfound() {
+        Mission picked = assigner.pickRevisit(stage(1), Set.of(), List.of());
+
+        assertThat(picked.getRewardPiece()).isSameAs(pieceOf(1, PieceType.EASY));
+    }
+
+    @Test
+    @DisplayName("지나온 계단 미션 받기 : 쉬움 조각을 찾았으면 보통")
+    void revisit_skipFound() {
+        Mission picked = assigner.pickRevisit(stage(1), Set.of(pieceOf(1, PieceType.EASY).getId()), List.of());
+
+        assertThat(picked.getRewardPiece()).isSameAs(pieceOf(1, PieceType.NORMAL));
+    }
+
+    @Test
+    @DisplayName("지나온 계단 미션 받기 : 다 찾았으면 쉬움 · 빗소리 미션은 안 나옴")
+    void revisit_allFound() {
+        Set<Long> found = Set.of(pieceOf(1, PieceType.EASY).getId(), pieceOf(1, PieceType.NORMAL).getId(),
+                pieceOf(1, PieceType.CHALLENGE).getId());
+
+        Mission picked = assigner.pickRevisit(stage(1), found, List.of());
+
+        assertThat(picked.getDifficulty()).isEqualTo(Difficulty.EASY);
+        assertThat(picked.isRainyOnly()).isFalse();
     }
 }

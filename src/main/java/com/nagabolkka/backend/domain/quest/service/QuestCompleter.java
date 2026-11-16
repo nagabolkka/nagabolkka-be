@@ -11,6 +11,7 @@ import com.nagabolkka.backend.domain.quest.dto.CompleteQuestResponse.PieceItem;
 import com.nagabolkka.backend.domain.quest.dto.CompleteQuestResponse.Restoration;
 import com.nagabolkka.backend.domain.quest.entity.DailyQuest;
 import com.nagabolkka.backend.domain.quest.entity.QuestRecord;
+import com.nagabolkka.backend.domain.quest.entity.QuestSource;
 import com.nagabolkka.backend.domain.quest.repository.QuestRecordRepository;
 import com.nagabolkka.backend.domain.region.entity.Region;
 import com.nagabolkka.backend.domain.region.entity.UserRegion;
@@ -88,10 +89,13 @@ public class QuestCompleter {
             crisisEventRepository.save(CrisisEvent.of(user, CrisisSource.REFLECTION));
         }
 
-        // 4) 조각 : 미션 보상 + (1계단 · 회고 있음 · 위기 아님 · 처음) 쉼의 조각
+        // 4) 조각 : 미션 보상 (담기 퀘스트면 담기 경로) + (1계단 · 회고 · 위기 아님 · 처음) 쉼의 조각
         List<PieceItem> pieces = new ArrayList<>();
         Piece reward = quest.getMission().getRewardPiece();
-        pieces.add(acquire(user, reward, AcquireSource.QUEST, quest));
+        AcquireSource source = quest.getSource() == QuestSource.SAVED_PLACE
+                ? AcquireSource.SAVED_PLACE
+                : AcquireSource.QUEST;
+        pieces.add(acquire(user, reward, source, quest));
 
         if (savedReflection != null && quest.getRegion().getStageNo() == REST_PIECE_STAGE) {
             pieceRepository.findFirstByType(PieceType.REFLECTION)
@@ -119,7 +123,7 @@ public class QuestCompleter {
                 nextDifficulty,
                 next == null ? null : new NextRegion(next.getStageNo(), next.getName()),
                 user.getNickname(),
-                quest.getMission().getTitle(),
+                quest.getTitle(), // 담기 퀘스트면 "아리랑도서관 다녀오기"
                 reward.getName(),
                 reward.getRestoreText()
         );

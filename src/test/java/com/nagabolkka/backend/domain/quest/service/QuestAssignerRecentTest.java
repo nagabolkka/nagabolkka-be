@@ -42,7 +42,7 @@ class QuestAssignerRecentTest {
     }
 
     private Mission pick(Difficulty difficulty, List<Long> recent) {
-        return assigner.pick(1, difficulty, false, missions, Set.of(), Set.of(), recent);
+        return assigner.pick(1, difficulty, false, missions, recent);
     }
 
     @Test

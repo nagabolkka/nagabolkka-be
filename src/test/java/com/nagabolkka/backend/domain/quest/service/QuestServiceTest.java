@@ -22,6 +22,7 @@ import com.nagabolkka.backend.global.common.Difficulty;
 import com.nagabolkka.backend.global.config.ClockConfig;
 import com.nagabolkka.backend.global.exception.CustomException;
 import com.nagabolkka.backend.global.exception.ErrorCode;
+import com.nagabolkka.backend.global.weather.WeatherService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -60,6 +61,9 @@ class QuestServiceTest {
     @Mock MissionStepRepository missionStepRepository;
     @Mock PieceAcquisitionRepository pieceAcquisitionRepository;
     @Mock DailyQuestRepository dailyQuestRepository;
+    @Mock WeatherService weatherService;
+    @Mock QuestPlaceFinder questPlaceFinder;
+    @Mock PlaceQuestFactory placeQuestFactory;
 
     QuestService questService;
 
@@ -73,7 +77,7 @@ class QuestServiceTest {
     void setUp() {
         questService = new QuestService(userRepository, userRegionRepository, missionRepository,
                 missionStepRepository, pieceAcquisitionRepository, dailyQuestRepository,
-                new QuestAssigner(), CLOCK);
+                new QuestAssigner(), weatherService, questPlaceFinder, placeQuestFactory, CLOCK);
 
         stage1 = Region.of(1, "시작의 방", "집 안", "빛의 조각", "#E8C06A", "a.png", "b.png");
         stage2 = Region.of(2, "바람의 숲", "문 앞", "바람의 조각", "#9DD49A", "a.png", "b.png");
@@ -103,31 +107,27 @@ class QuestServiceTest {
         given(userRepository.findByIdForUpdate(USER_ID)).willReturn(Optional.of(user));
         given(dailyQuestRepository.findToday(USER_ID, TODAY)).willReturn(Optional.of(existing));
 
-        TodayQuestResponse response = questService.getToday(USER_ID);
+        TodayQuestResponse response = questService.getToday(USER_ID, null);
 
         assertThat(response.title()).isEqualTo("집 앞 골목 한 바퀴, 10분 산책");
         then(dailyQuestRepository).should(never()).save(any());
     }
 
     @Test
-    @DisplayName("없으면 배정 : 쉬운 날 + 1계단 지나옴 → 1계단 미션, KST 날짜로 저장")
+    @DisplayName("없으면 배정 : 지나온 계단이 있어도 현재 계단(2) · 오늘 난이도 미션, KST 날짜로 저장")
     void getToday_assign() {
         given(userRepository.findByIdForUpdate(USER_ID)).willReturn(Optional.of(user));
         given(dailyQuestRepository.findToday(USER_ID, TODAY)).willReturn(Optional.empty());
-        given(userRegionRepository.findByUserIdOrderByRegionStageNoAsc(user.getId())).willReturn(List.of(
-                UserRegion.create(user, stage1, RegionStatus.PASSED, null),
-                UserRegion.create(user, stage2, RegionStatus.ACTIVE, null)));
-        given(missionRepository.findActiveByRegionIds(anyCollection())).willReturn(List.of(stage1Easy, stage2Easy));
-        given(pieceAcquisitionRepository.findFoundPieceIds(user.getId())).willReturn(List.of());
+        given(missionRepository.findActiveByRegionIds(List.of(2L))).willReturn(List.of(stage2Easy));
         given(dailyQuestRepository.save(any(DailyQuest.class))).willAnswer(inv -> inv.getArgument(0));
 
-        TodayQuestResponse response = questService.getToday(USER_ID);
+        TodayQuestResponse response = questService.getToday(USER_ID, null);
 
         assertThat(response.questDate()).isEqualTo(TODAY);
         assertThat(response.status()).isEqualTo(QuestStatus.ASSIGNED);
-        assertThat(response.region().stageNo()).isEqualTo(1); // 지나온 계단 미션
-        assertThat(response.reward().pieceId()).isEqualTo(11L);
-        assertThat(response.place().distanceM()).isZero();    // 실내
+        assertThat(response.region().stageNo()).isEqualTo(2);
+        assertThat(response.reward().pieceId()).isEqualTo(21L);
+        assertThat(response.place().distanceM()).isNull();     // 바깥 미션 · 장소 찾기는 mock
         assertThat(response.steps()).isEmpty();                // 쪼개기 전
         assertThat(response.changeRemaining()).isEqualTo(2);
     }
@@ -138,7 +138,7 @@ class QuestServiceTest {
         User newUser = User.createKakaoUser("동진");
         given(userRepository.findByIdForUpdate(USER_ID)).willReturn(Optional.of(newUser));
 
-        assertThatThrownBy(() -> questService.getToday(USER_ID))
+        assertThatThrownBy(() -> questService.getToday(USER_ID, null))
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.ONBOARDING_REQUIRED);
     }
@@ -148,7 +148,7 @@ class QuestServiceTest {
     void getToday_userNotFound() {
         given(userRepository.findByIdForUpdate(USER_ID)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> questService.getToday(USER_ID))
+        assertThatThrownBy(() -> questService.getToday(USER_ID, null))
                 .isInstanceOf(CustomException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.UNAUTHORIZED);
     }
@@ -162,8 +162,8 @@ class QuestServiceTest {
         given(pieceAcquisitionRepository.existsByUserIdAndPieceType(USER_ID, PieceType.REFLECTION))
                 .willReturn(false, true); // 첫 조회 : 안 받음 → 두 번째 : 받음
 
-        assertThat(questService.getToday(USER_ID).restPieceAvailable()).isTrue();
-        assertThat(questService.getToday(USER_ID).restPieceAvailable()).isFalse();
+        assertThat(questService.getToday(USER_ID, null).restPieceAvailable()).isTrue();
+        assertThat(questService.getToday(USER_ID, null).restPieceAvailable()).isFalse();
     }
 
     @Test
@@ -173,7 +173,7 @@ class QuestServiceTest {
         given(userRepository.findByIdForUpdate(USER_ID)).willReturn(Optional.of(user));
         given(dailyQuestRepository.findToday(USER_ID, TODAY)).willReturn(Optional.of(stage2Quest));
 
-        assertThat(questService.getToday(USER_ID).restPieceAvailable()).isFalse();
+        assertThat(questService.getToday(USER_ID, null).restPieceAvailable()).isFalse();
         then(pieceAcquisitionRepository).should(never()).existsByUserIdAndPieceType(any(), any());
     }
 }

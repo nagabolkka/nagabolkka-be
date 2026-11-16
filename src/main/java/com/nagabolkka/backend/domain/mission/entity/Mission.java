@@ -27,6 +27,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Mission extends BaseEntity {
 
+    // 담기 미션 제목 · 단계의 장소 자리 (DailyQuest 가 장소 이름으로 바꿈)
+    public static final String PLACE_TOKEN = "{place}";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -60,6 +63,15 @@ public class Mission extends BaseEntity {
     @Column(nullable = false, length = 60)
     private String placeName;
 
+    // 카카오 로컬 검색어 (바깥 미션에서 실제 장소를 찾을 때) · 없으면 기본 장소 이름만
+    @Column(length = 50)
+    private String kakaoQuery;
+
+    // PLACE_SEED = 동네 지도 담기 미션 (자동 배정 X) · null = 일반 미션
+    @Enumerated(EnumType.STRING)
+    @Column(length = 12)
+    private PlaceType placeType;
+
     @Column(nullable = false)
     private int estMinutes;
 
@@ -83,8 +95,31 @@ public class Mission extends BaseEntity {
         return mission;
     }
 
+    // 동네 지도 담기 미션 : 계단마다 1개 · active = false → 자동 배정 · 바꾸기 · 지나온 계단 후보에서 빠짐
+    public static Mission placeMission(Region region, Piece rewardPiece, Difficulty difficulty) {
+        Mission mission = of(region, rewardPiece, PLACE_TOKEN + " 다녀오기",
+                "담은 장소에 다녀와요. 입구까지만 가도 괜찮아요.",
+                difficulty, false, false, "담은 장소", 60);
+        mission.placeType = PlaceType.PLACE_SEED;
+        mission.active = false;
+        return mission;
+    }
+
     // 빗소리 칸 미션 → 비 오는 날에만 배정
     public boolean isRainyOnly() {
         return rewardPiece.getType() == PieceType.RAINY;
+    }
+
+    public boolean isPlaceMission() {
+        return placeType == PlaceType.PLACE_SEED;
+    }
+
+    public boolean hasKakaoQuery() {
+        return kakaoQuery != null && !kakaoQuery.isBlank();
+    }
+
+    // 시드 : 검색어 채우기 (기존 미션 포함)
+    public void changeKakaoQuery(String kakaoQuery) {
+        this.kakaoQuery = kakaoQuery;
     }
 }

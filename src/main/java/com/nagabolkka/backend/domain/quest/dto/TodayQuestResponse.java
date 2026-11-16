@@ -44,11 +44,11 @@ public record TodayQuestResponse(
     }
 
     public record PlaceInfo(
-            @Schema(example = "내 방 창가") String name,
-            @Schema(description = "장소 좌표 (M4 카카오 로컬 연결 후)", nullable = true) BigDecimal lat,
-            @Schema(nullable = true) BigDecimal lng,
-            @Schema(description = "실내 0 · 모르면 null (M4 전 실외)", example = "0", nullable = true) Integer distanceM,
-            @Schema(example = "0", nullable = true) Integer walkMinutes
+            @Schema(description = "장소 이름 (바깥 미션은 근처 실제 장소, 못 찾으면 기본 이름)", example = "GS25 종암점") String name,
+            @Schema(description = "장소 좌표 (실제 장소를 찾았을 때만)", example = "37.5921000", nullable = true) BigDecimal lat,
+            @Schema(example = "127.0321000", nullable = true) BigDecimal lng,
+            @Schema(description = "현재 위치(없으면 내 구 중심) ↔ 장소 직선거리 · 실내 0 · 모르면 null", example = "210", nullable = true) Integer distanceM,
+            @Schema(description = "직선거리 × 1.3 ÷ 67m", example = "4", nullable = true) Integer walkMinutes
     ) {
     }
 
@@ -78,15 +78,15 @@ public record TodayQuestResponse(
                 quest.getStatus(),
                 quest.getSource(),
                 new RegionInfo(quest.getRegion().getStageNo(), quest.getRegion().getName()),
-                mission.getTitle(),
-                mission.getDescription(),
+                quest.getTitle(),
+                quest.getDescription(),
                 mission.getDifficulty(),
                 mission.isIndoor(),
-                new PlaceInfo(quest.getPlaceName(), null, null, distanceM, walkMinutes),
+                new PlaceInfo(quest.getPlaceName(), quest.getPlaceLat(), quest.getPlaceLng(), distanceM, walkMinutes),
                 mission.getEstMinutes(),
                 new RewardInfo(piece.getId(), piece.getName(), piece.getRestoreText()),
                 quest.isSplit(),
-                steps.stream().map(s -> new StepInfo(s.getStepNo(), s.getContent())).toList(),
+                steps.stream().map(s -> new StepInfo(s.getStepNo(), quest.fill(s.getContent()))).toList(),
                 quest.getChangeRemaining(),
                 restPieceAvailable
         );

@@ -4,6 +4,7 @@ import com.nagabolkka.backend.domain.mission.entity.Mission;
 import com.nagabolkka.backend.domain.region.entity.Region;
 import com.nagabolkka.backend.domain.user.entity.User;
 import com.nagabolkka.backend.global.common.BaseEntity;
+import com.nagabolkka.backend.domain.place.entity.Place;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -26,6 +27,7 @@ import com.nagabolkka.backend.global.exception.ErrorCode;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 // 사용자 별 하루 퀘스트 (하루 1개)
 @Getter
@@ -68,9 +70,24 @@ public class DailyQuest extends BaseEntity {
     @Column(nullable = false, length = 15)
     private QuestStatus status;
 
+    // 동네 지도에서 담은 장소
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "place_id")
+    private Place place;
+
     // 배정 당시 장소 이름
     @Column(length = 60)
     private String placeName;
+
+    // 카카오 로컬 장소 (바깥 미션 · 못 찾으면 null) — 장소 좌표이지 사용자 위치 아님
+    @Column(length = 20)
+    private String kakaoPlaceId;
+
+    @Column(precision = 10, scale = 7)
+    private BigDecimal placeLat;
+
+    @Column(precision = 10, scale = 7)
+    private BigDecimal placeLng;
 
     // 사용자 위치 ↔ 장소 직선거리 (사용자 좌표는 저장 안 함) · 실내 0 · 모르면 null
     private Integer distanceM;
@@ -105,8 +122,64 @@ public class DailyQuest extends BaseEntity {
         return quest;
     }
 
+    // 담기 퀘스트 (오늘 새로 · 내일 예약 배정)
+    public static DailyQuest assignPlace(User user, LocalDate questDate, Mission placeMission,
+                                         Place place, Integer distanceM) {
+        DailyQuest quest = assign(user, questDate, placeMission);
+        quest.source = QuestSource.SAVED_PLACE;
+        quest.applyPlace(place, distanceM);
+        return quest;
+    }
+
+    // 오늘 퀘스트를 담은 장소로 교체 : 처음 상태로 · 바꾸기 횟수 그대로
+    public void replaceWithPlace(Mission placeMission, Place place, Integer distanceM) {
+        checkNotDone();
+        replaceMission(placeMission);
+        this.source = QuestSource.SAVED_PLACE;
+        applyPlace(place, distanceM);
+    }
+
+    public boolean isPlace(Long placeId) {
+        return place != null && place.getId().equals(placeId);
+    }
+
+    // 화면에 보일 제목 · 설명 (담기 퀘스트면 {place} → 장소 이름 · 설명은 장소 설명)
+    public String getTitle() {
+        return fill(mission.getTitle());
+    }
+
+    public String getDescription() {
+        if (place != null && place.getDescription() != null) {
+            return place.getDescription();
+        }
+        return fill(mission.getDescription());
+    }
+
+    public String fill(String text) {
+        return text == null || place == null ? text : text.replace(Mission.PLACE_TOKEN, place.getName());
+    }
+
+    private void applyPlace(Place place, Integer distanceM) {
+        this.place = place;
+        this.placeName = place.getName().length() > 60 ? place.getName().substring(0, 60) : place.getName();
+        this.placeLat = place.getLat();
+        this.placeLng = place.getLng();
+        this.kakaoPlaceId = null;
+        this.distanceM = distanceM;
+    }
+
     public int getChangeRemaining() {
         return MAX_CHANGE - changeCount;
+    }
+
+    // 실제 장소 찾음 : 이름 · 좌표 · 거리 (사용자 좌표는 저장하지 않음)
+    public void foundPlace(String kakaoPlaceId, String placeName, BigDecimal placeLat, BigDecimal placeLng,
+                           int distanceM) {
+        this.kakaoPlaceId = kakaoPlaceId;
+        this.placeName = placeName.length() > 60 ? placeName.substring(0, 60) : placeName;
+        this.placeLat = placeLat;
+        this.placeLng = placeLng;
+        this.distanceM = distanceM;
     }
 
     // 수락 → 진행 중 (이미 진행 중이면 그대로 · 버튼 두 번 눌러도 OK)
@@ -175,6 +248,10 @@ public class DailyQuest extends BaseEntity {
         this.status = QuestStatus.ASSIGNED;
         this.placeName = newMission.getPlaceName();
         this.distanceM = newMission.isIndoor() ? 0 : null;
+        this.kakaoPlaceId = null;
+        this.placeLat = null;
+        this.placeLng = null;
+        this.place = null;
         this.split = false;
         this.splitDoneSteps = 0;
         this.acceptedAt = null;

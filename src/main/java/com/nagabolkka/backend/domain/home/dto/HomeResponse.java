@@ -9,13 +9,14 @@ import com.nagabolkka.backend.domain.region.entity.Region;
 import com.nagabolkka.backend.domain.region.entity.RegionStatus;
 import com.nagabolkka.backend.domain.region.entity.UserRegion;
 import com.nagabolkka.backend.global.common.Difficulty;
+import com.nagabolkka.backend.global.weather.Weather;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.List;
 
 public record HomeResponse(
 
-        @Schema(description = "날씨 (M4 기상청 연결 전까지 항상 맑음)") Weather weather,
+        @Schema(description = "날씨 (기상청 초단기실황 · 내 구 · 1시간 캐시, 실패하면 맑음)") Weather weather,
         CurrentRegion currentRegion,
         @Schema(description = "지금까지 모은 조각 수 (◆ 배지)", example = "8") long pieceCount,
         @Schema(description = "루미 한 줄 · 버튼 문구 분기 (DEFAULT · RAINY · SAVED_PLACE · IN_PROGRESS · COMPLETED · SKIPPED · WELCOME_BACK)",
@@ -26,15 +27,6 @@ public record HomeResponse(
         @Schema(description = "다음 지역 제안 (복원도 100% + 제안 주기일 때만, 아니면 null)", nullable = true)
         NextRegion nextRegionSuggestion
 ) {
-
-    public record Weather(
-            @Schema(example = "CLEAR") String sky,
-            @Schema(example = "false") boolean isRainy
-    ) {
-        public static Weather clear() {
-            return new Weather("CLEAR", false);
-        }
-    }
 
     public record CurrentRegion(
             @Schema(example = "3") int stageNo,
@@ -59,8 +51,8 @@ public record HomeResponse(
             @Schema(description = "미션의 계단 (지나온 계단 미션이면 현재보다 낮음) → 카드 조각 색", example = "1") int stageNo,
             @Schema(example = "창문 열고 바깥 공기 3분 마시기") String title,
             @Schema(example = "EASY") Difficulty difficulty,
-            @Schema(example = "내 방 창가") String placeName,
-            @Schema(description = "실내 0 · 모르면 null", example = "0", nullable = true) Integer distanceM,
+            @Schema(description = "장소 이름 (바깥 미션은 근처 실제 장소)", example = "내 방 창가") String placeName,
+            @Schema(description = "실내 0 · 실제 장소면 거리 · 모르면 null", example = "0", nullable = true) Integer distanceM,
             @Schema(example = "3") int estMinutes,
             @Schema(description = "진행 중이면 쪼개기 화면 / 진행 화면 분기", example = "false") boolean isSplit,
             Reward reward
@@ -68,7 +60,7 @@ public record HomeResponse(
         static TodayQuest from(DailyQuest quest) {
             Mission mission = quest.getMission();
             return new TodayQuest(quest.getId(), quest.getStatus(), quest.getSource(),
-                    quest.getRegion().getStageNo(), mission.getTitle(), mission.getDifficulty(),
+                    quest.getRegion().getStageNo(), quest.getTitle(), mission.getDifficulty(),
                     quest.getPlaceName(), quest.getDistanceM(), mission.getEstMinutes(), quest.isSplit(),
                     new Reward(mission.getRewardPiece().getId(), mission.getRewardPiece().getName()));
         }
@@ -110,11 +102,11 @@ public record HomeResponse(
     ) {
     }
 
-    public static HomeResponse of(UserRegion current, long pieceCount, HomeState homeState, DailyQuest quest,
-                                  List<UserRegion> userRegions, Goal goal, int goalChecked, int goalTotal,
-                                  Region nextRegion) {
+    public static HomeResponse of(Weather weather, UserRegion current, long pieceCount, HomeState homeState,
+                                  DailyQuest quest, List<UserRegion> userRegions, Goal goal,
+                                  int goalChecked, int goalTotal, Region nextRegion) {
         return new HomeResponse(
-                Weather.clear(),
+                weather,
                 CurrentRegion.from(current),
                 pieceCount,
                 homeState,
