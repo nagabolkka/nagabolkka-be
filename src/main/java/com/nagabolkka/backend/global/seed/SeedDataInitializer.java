@@ -19,6 +19,7 @@ import com.nagabolkka.backend.global.common.Difficulty;
 import com.nagabolkka.backend.domain.place.entity.Place;
 import com.nagabolkka.backend.domain.place.entity.PlaceCategory;
 import com.nagabolkka.backend.domain.place.repository.PlaceRepository;
+import com.nagabolkka.backend.domain.mission.entity.PlaceType;
 import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -494,6 +495,12 @@ public class SeedDataInitializer implements ApplicationRunner {
             Map.entry("청년센터", "청년공간")
     );
 
+    // 담기 미션 쪼개기 단계 ({place} = 장소 이름)
+    private static final List<String> PLACE_MISSION_STEPS = List.of(
+            "가는 길 한 번 확인하기",
+            Mission.PLACE_TOKEN + " 입구까지 가기",
+            "안에 들어가 잠깐 머물기");
+
     // stageNo = 어느 계단 미션으로 쓰이는지 · 날짜는 "yyyy-MM-dd" 또는 null (상시)
     private record PlaceSeed(PlaceCategory category, String name, String address, String lat, String lng,
                              boolean free, boolean soloOk, String openHours, String description,
@@ -558,6 +565,7 @@ public class SeedDataInitializer implements ApplicationRunner {
         seedGoals();
         seedPieces();
         seedMissions();
+        seedPlaceMissions();
         seedKakaoQueries();
         seedPlaces();
         log.info("시드 데이터 확인 완료 (구 {} · 지역 {} · 목표 {} · 조각 {} · 미션 {} · 장소 {})",
@@ -657,6 +665,25 @@ public class SeedDataInitializer implements ApplicationRunner {
                     seed.validFrom() == null ? null : LocalDate.parse(seed.validFrom()),
                     seed.validTo() == null ? null : LocalDate.parse(seed.validTo()),
                     seed.source()));
+        }
+    }
+
+    // 담기 미션 : 계단마다 1개 (자동 배정 X)
+    private void seedPlaceMissions() {
+        for (int stageNo = 1; stageNo <= 5; stageNo++) {
+            Region region = findRegion(stageNo);
+            if (missionRepository.existsByRegionIdAndPlaceType(region.getId(), PlaceType.PLACE_SEED)) {
+                continue;
+            }
+            boolean savedSlot = stageNo == 2 || stageNo == 3;
+            int slotNo = savedSlot ? 5 : 3;
+            Piece piece = pieceRepository.findByRegionIdAndSlotNo(region.getId(), slotNo)
+                    .orElseThrow(() -> new IllegalStateException("조각 시드가 없어요: " + region.getStageNo() + "계단 " + slotNo + "칸"));
+            Mission mission = missionRepository.save(Mission.placeMission(region, piece,
+                    savedSlot ? Difficulty.NORMAL : Difficulty.CHALLENGE));
+            missionStepRepository.saveAll(IntStream.range(0, PLACE_MISSION_STEPS.size())
+                    .mapToObj(i -> MissionStep.of(mission, i + 1, PLACE_MISSION_STEPS.get(i)))
+                    .toList());
         }
     }
 

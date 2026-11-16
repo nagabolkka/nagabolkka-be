@@ -1,12 +1,14 @@
 package com.nagabolkka.backend.domain.mission.repository;
 
 import com.nagabolkka.backend.domain.mission.entity.Mission;
+import com.nagabolkka.backend.domain.mission.entity.PlaceType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 public interface MissionRepository extends JpaRepository<Mission, Long> {
 
@@ -21,4 +23,10 @@ public interface MissionRepository extends JpaRepository<Mission, Long> {
 
     // 시드 : 같은 제목 미션이 이미 있으면 건너뜀 (보상 조각 하나에 미션 여러 개)
     boolean existsByTitle(String title);
+
+    // 담기 : 현재 계단의 담기 미션
+    Optional<Mission> findFirstByRegionIdAndPlaceType(Long regionId, PlaceType placeType);
+
+    // 시드 : 계단별 담기 미션이 이미 있는지
+    boolean existsByRegionIdAndPlaceType(Long regionId, PlaceType placeType);
 }
