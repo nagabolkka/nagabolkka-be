@@ -2,7 +2,7 @@ package com.nagabolkka.backend.domain.auth.service;
 
 import com.nagabolkka.backend.domain.auth.dto.TokenResponse;
 import com.nagabolkka.backend.domain.auth.entity.RefreshToken;
-import com.nagabolkka.backend.domain.auth.repository.RefreshTokenRepository;
+import com.nagabolkka.backend.domain.user.repository.RefreshTokenRepository;
 import com.nagabolkka.backend.domain.user.entity.User;
 import com.nagabolkka.backend.global.crypto.CryptoProperties;
 import com.nagabolkka.backend.global.crypto.HashUtil;
