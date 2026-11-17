@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "관리자 · 공지", description = "공지 목록 · 등록 · 수정 · 게시 중지 · 삭제 (ADMIN)")
+@Tag(name = "관리자 ㅡ 공지 관리", description = "공지 목록 · 등록 · 수정 · 게시 중지 · 삭제 (ADMIN)")
 @RestController
 @RequestMapping("/api/admin/notices")
 @RequiredArgsConstructor
