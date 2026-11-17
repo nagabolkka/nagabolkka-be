@@ -1,6 +1,7 @@
 package com.nagabolkka.backend.domain.user.repository;
 
 import com.nagabolkka.backend.domain.user.entity.User;
+import com.nagabolkka.backend.domain.user.entity.Role;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -8,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
+import java.util.List;
 
 public interface UserRepository extends JpaRepository<User, Long> {
 
@@ -19,4 +21,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select u from User u where u.id = :id")
     Optional<User> findByIdForUpdate(@Param("id") Long id);
+
+    // 관리자 사용자 현황 : 역할별 (현재 계단까지 한 번에) · id 순
+    @Query("select u from User u left join fetch u.currentRegion where u.role = :role order by u.id")
+    List<User> findAllWithRegionByRole(@Param("role") Role role);
 }
