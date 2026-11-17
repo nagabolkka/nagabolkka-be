@@ -54,5 +54,3 @@ ai:
   internal-key: ${AI_INTERNAL_KEY:local-dev-key}
   timeout: 5s
   letter-timeout: 20s
-letter:
-  weekly-cron: "0 */1 * * * *"   # ⚠️ 확인 끝나면 삭제 (커밋 금지)
