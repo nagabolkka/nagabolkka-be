@@ -1,6 +1,8 @@
 package com.nagabolkka.backend.domain.quest.repository;
 
 import com.nagabolkka.backend.domain.quest.entity.DailyQuest;
+import com.nagabolkka.backend.domain.quest.entity.QuestStatus;
+import com.nagabolkka.backend.domain.user.entity.Role;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -39,4 +41,26 @@ public interface DailyQuestRepository extends JpaRepository<DailyQuest, Long> {
             """)
     List<DayRecord> findDayRecords(@Param("userId") Long userId,
                                    @Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    // 관리자 : 사용자별 배정 · 완료 · 쉬기 (한 번에 GROUP BY · 하루 1개라 count = 배정된 날)
+    @Query("""
+            select new com.nagabolkka.backend.domain.quest.repository.QuestStats(
+                q.user.id,
+                count(q),
+                sum(case when q.status = :completed then 1L else 0L end),
+                sum(case when q.status = :skipped then 1L else 0L end))
+            from DailyQuest q
+            where q.user.role = :role
+            group by q.user.id
+            """)
+    List<QuestStats> countQuestStats(@Param("role") Role role,
+                                     @Param("completed") QuestStatus completed,
+                                     @Param("skipped") QuestStatus skipped);
+
+    // 편지 : 그 주 완료 수
+    long countByUserIdAndStatusAndQuestDateBetween(Long userId, QuestStatus status, LocalDate from, LocalDate to);
+
+    // 편지 : 그 주 쪼개서 완료한 수 (DailyQuest.split = is_split)
+    long countByUserIdAndStatusAndSplitTrueAndQuestDateBetween(Long userId, QuestStatus status,
+                                                               LocalDate from, LocalDate to);
 }
