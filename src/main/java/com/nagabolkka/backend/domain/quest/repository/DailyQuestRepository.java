@@ -56,4 +56,11 @@ public interface DailyQuestRepository extends JpaRepository<DailyQuest, Long> {
     List<QuestStats> countQuestStats(@Param("role") Role role,
                                      @Param("completed") QuestStatus completed,
                                      @Param("skipped") QuestStatus skipped);
+
+    // 편지 : 그 주 완료 수
+    long countByUserIdAndStatusAndQuestDateBetween(Long userId, QuestStatus status, LocalDate from, LocalDate to);
+
+    // 편지 : 그 주 쪼개서 완료한 수 (DailyQuest.split = is_split)
+    long countByUserIdAndStatusAndSplitTrueAndQuestDateBetween(Long userId, QuestStatus status,
+                                                               LocalDate from, LocalDate to);
 }
