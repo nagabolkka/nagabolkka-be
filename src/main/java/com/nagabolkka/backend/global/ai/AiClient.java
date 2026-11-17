@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 import java.util.List;
 import java.util.Map;
@@ -15,11 +16,13 @@ import java.util.function.Supplier;
 public class AiClient {
 
     private final RestClient aiRestClient;
+    private final RestClient aiLetterRestClient;
 
-    public AiClient(RestClient aiRestClient) {
+    public AiClient(@Qualifier("aiRestClient") RestClient aiRestClient,
+                    @Qualifier("aiLetterRestClient") RestClient aiLetterRestClient) {
         this.aiRestClient = aiRestClient;
+        this.aiLetterRestClient = aiLetterRestClient;
     }
-
     public record CrisisResult(boolean crisis, String method, String ruleId, String category) {
     }
 
@@ -53,6 +56,14 @@ public class AiClient {
     public record PracticeFeedbackResult(PracticeFeedback feedback, boolean fallback) {
     }
 
+    // 주간 편지 (숫자 통계만 · 회고 없음)
+    public record LetterRequest(String nickname, int outingCount, int splitCount, int pieceCount, int foundSlots,
+                                String regionName, int restoration, Double moodAverage) {
+    }
+
+    public record LetterResult(String body, boolean fallback) {
+    }
+
     // 회고 · 연습 메시지 위기 검사
     public Optional<CrisisResult> checkCrisis(String text) {
         return call(() -> post("/ai/crisis/check", Map.of("text", text), CrisisResult.class));
@@ -80,6 +91,12 @@ public class AiClient {
     public Optional<PracticeFeedback> practiceFeedback(PracticeFeedbackRequest request) {
         return call(() -> post("/ai/practice/feedback", request, PracticeFeedbackResult.class))
                 .map(PracticeFeedbackResult::feedback);
+    }
+
+    // 주간 편지 본문 (배치 · 20초)
+    public Optional<LetterResult> weeklyLetter(LetterRequest request) {
+        return call(() -> aiLetterRestClient.post().uri("/ai/letter/weekly").body(request).retrieve()
+                .body(LetterResult.class));
     }
 
     private <T> T post(String uri, Object body, Class<T> type) {
