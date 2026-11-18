@@ -64,7 +64,7 @@ public class HomeService {
         boolean welcomeBack = isWelcomeBack(user.getLastActiveAt(), today);
         user.updateLastActiveAt(now);
 
-        DailyQuest quest = questService.findOrAssign(user, today, location);
+        DailyQuest quest = questService.findOrAssignNearby(user, today, location);
 
         List<UserRegion> userRegions = userRegionRepository.findByUserIdOrderByRegionStageNoAsc(userId);
         UserRegion current = userRegions.stream()
@@ -78,8 +78,8 @@ public class HomeService {
         int goalTotal = goal == null ? 0 : (int) goalStepRepository.countByGoalId(goal.getId());
         int goalChecked = goal == null ? 0 : (int) userGoalStepRepository.countChecked(userId, goal.getId());
 
-        // 내 구 날씨 (배정 때 이미 불렀으면 캐시)
-        Weather weather = weatherService.get(user.getDistrict());
+        // 지금 위치 날씨 (없으면 내 구 · 배정 때 이미 불렀으면 캐시)
+        Weather weather = weatherService.get(user.getDistrict(), location);
 
         return HomeResponse.of(weather, current, pieceCount, HomeState.of(quest, welcomeBack, weather.isRainy()), quest,
                 userRegions, goal, goalChecked, goalTotal, nextRegionPolicy.suggest(current, userRegions, now));
