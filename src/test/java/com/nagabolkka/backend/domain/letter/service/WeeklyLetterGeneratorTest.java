@@ -44,6 +44,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
+import static org.mockito.ArgumentMatchers.eq;
 
 @ExtendWith(MockitoExtension.class)
 class WeeklyLetterGeneratorTest {
@@ -122,7 +123,7 @@ class WeeklyLetterGeneratorTest {
         User user = user(1L, "윤지");
         given(userRepository.findLetterTargets(Role.USER, BEFORE)).willReturn(List.of(user));
         givenStats(user, 3);
-        given(placeRepository.findActiveByDistrictId(10L)).willReturn(List.of(place(3L, "도서관", 37.59, true, null)));
+        given(placeRepository.findActiveNear(any(), eq(3_000))).willReturn(List.of(place(3L, "도서관", 37.59, true, null)));
         given(aiClient.weeklyLetter(any())).willReturn(Optional.of(new AiClient.LetterResult("  AI 편지  ", false)));
 
         WeeklyLetterGenerator.Result result = generator.generate(WEEK_START);
@@ -147,7 +148,7 @@ class WeeklyLetterGeneratorTest {
         User user = user(1L, "윤지");
         given(userRepository.findLetterTargets(Role.USER, BEFORE)).willReturn(List.of(user));
         givenStats(user, 0);
-        given(placeRepository.findActiveByDistrictId(10L)).willReturn(List.of());
+        given(placeRepository.findActiveNear(any(), eq(3_000))).willReturn(List.of());
 
         generator.generate(WEEK_START);
 
@@ -162,7 +163,7 @@ class WeeklyLetterGeneratorTest {
         User user = user(1L, "윤지");
         given(userRepository.findLetterTargets(Role.USER, BEFORE)).willReturn(List.of(user));
         givenStats(user, 2);
-        given(placeRepository.findActiveByDistrictId(10L)).willReturn(List.of());
+        given(placeRepository.findActiveNear(any(), eq(3_000))).willReturn(List.of());
         given(aiClient.weeklyLetter(any())).willReturn(Optional.empty());
 
         generator.generate(WEEK_START);
@@ -190,7 +191,7 @@ class WeeklyLetterGeneratorTest {
         User user = user(1L, "윤지");
         given(userRepository.findLetterTargets(Role.USER, BEFORE)).willReturn(List.of(user));
         givenStats(user, 0);
-        given(placeRepository.findActiveByDistrictId(10L)).willReturn(List.of());
+        given(placeRepository.findActiveNear(any(), eq(3_000))).willReturn(List.of());
         given(weeklyLetterRepository.save(any())).willThrow(new DataIntegrityViolationException("uk"));
 
         assertThat(generator.generate(WEEK_START)).isEqualTo(new WeeklyLetterGenerator.Result(WEEK_START, 0, 1, 0));
@@ -205,7 +206,7 @@ class WeeklyLetterGeneratorTest {
         given(dailyQuestRepository.countByUserIdAndStatusAndQuestDateBetween(1L, QuestStatus.COMPLETED, WEEK_START, WEEK_END))
                 .willThrow(new IllegalStateException("db"));
         givenStats(ok, 0);
-        given(placeRepository.findActiveByDistrictId(10L)).willReturn(List.of());
+        given(placeRepository.findActiveNear(any(), eq(3_000))).willReturn(List.of());
 
         WeeklyLetterGenerator.Result result = generator.generate(WEEK_START);
 
@@ -217,7 +218,7 @@ class WeeklyLetterGeneratorTest {
     @DisplayName("추천 : 닫힌 · 혼자 어려운 장소 빼고 가까운 순 2곳")
     void recommend_filterAndSort() {
         User user = user(1L, "윤지");
-        given(placeRepository.findActiveByDistrictId(10L)).willReturn(List.of(
+        given(placeRepository.findActiveNear(any(), eq(3_000))).willReturn(List.of(
                 place(1L, "먼 곳", 37.70, true, null),
                 place(2L, "가까운 곳", 37.59, true, null),
                 place(3L, "기간 끝", 37.5894, true, LocalDate.of(2026, 11, 1)),
@@ -234,7 +235,7 @@ class WeeklyLetterGeneratorTest {
     @DisplayName("추천 : 다음 주엔 다른 조합 (가까운 6곳 안에서 돌아감)")
     void recommend_rotates() {
         User user = user(1L, "윤지");
-        given(placeRepository.findActiveByDistrictId(10L)).willReturn(List.of(
+        given(placeRepository.findActiveNear(any(), eq(3_000))).willReturn(List.of(
                 place(1L, "a", 37.590, true, null), place(2L, "b", 37.591, true, null),
                 place(3L, "c", 37.592, true, null), place(4L, "d", 37.593, true, null)));
 

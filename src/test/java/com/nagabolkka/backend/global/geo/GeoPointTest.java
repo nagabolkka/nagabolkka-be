@@ -34,4 +34,15 @@ class GeoPointTest {
         assertThat(SEONGBUK.distanceTo(new GeoPoint(37.5984, 127.0167))).isCloseTo(1001, within(5)); // 위도 0.009 ≈ 1km
         assertThat(SEONGBUK.distanceTo(new GeoPoint(37.5894, 127.0267))).isCloseTo(881, within(5));  // 경도 0.01 ≈ 881m
     }
+
+    @Test
+    void 반경_3km_네모는_안쪽_점을_포함하고_정확한_거리는_서비스에서() {
+        GeoPoint center = new GeoPoint(37.5894, 127.0167);
+
+        GeoBox box = center.boxAround(3_000);
+
+        assertThat(box.maxLat().doubleValue() - 37.5894).isBetween(0.026, 0.028);  // 위도 ±0.027
+        assertThat(box.maxLng().doubleValue() - 127.0167).isBetween(0.033, 0.035); // 경도 ±0.034 (서울)
+        assertThat(center.distanceTo(new GeoPoint(box.maxLat().doubleValue(), 127.0167))).isBetween(2_990, 3_010);
+    }
 }

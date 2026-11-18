@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class PlaceTest {
 
     private static Place place(LocalDate from, LocalDate to) {
-        return Place.of(PlaceCategory.PROGRAM, "북토크", null, "주소", new BigDecimal("37.5"), new BigDecimal("127.0"),
+        return Place.of(PlaceCategory.COMMUNITY, "북토크", null, "주소", new BigDecimal("37.5"), new BigDecimal("127.0"),
                 true, true, null, null, null, from, to, "예시");
     }
 
