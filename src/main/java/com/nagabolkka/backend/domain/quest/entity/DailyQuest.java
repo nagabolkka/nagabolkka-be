@@ -5,6 +5,7 @@ import com.nagabolkka.backend.domain.region.entity.Region;
 import com.nagabolkka.backend.domain.user.entity.User;
 import com.nagabolkka.backend.global.common.BaseEntity;
 import com.nagabolkka.backend.domain.place.entity.Place;
+import com.nagabolkka.backend.global.geo.GeoPoint;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -193,6 +194,22 @@ public class DailyQuest extends BaseEntity {
         this.placeLat = placeLat;
         this.placeLng = placeLng;
         this.distanceM = distanceM;
+    }
+
+    // 위치가 크게 바뀌었을 때 장소를 다시 찾아도 되는지
+    // 수락 전 · 담기 퀘스트 아님 (사용자가 고른 장소) · 카카오로 찾은 장소가 있음 · 검색어 있는 바깥 미션
+    public boolean canRefindPlace() {
+        return status == QuestStatus.ASSIGNED
+                && source != QuestSource.SAVED_PLACE
+                && placeLat != null && placeLng != null
+                && !mission.isIndoor()
+                && mission.hasKakaoQuery();
+    }
+
+    // 퀘스트 장소 좌표 (장소 못 찾았으면 null)
+    public GeoPoint placePoint() {
+        return placeLat == null || placeLng == null ? null
+                : new GeoPoint(placeLat.doubleValue(), placeLng.doubleValue());
     }
 
     // 수락 → 진행 중 (이미 진행 중이면 그대로 · 버튼 두 번 눌러도 OK)
