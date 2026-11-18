@@ -67,7 +67,7 @@ class PlaceQuestFactoryTest {
     }
 
     private Place place(LocalDate validTo) {
-        Place place = Place.of(PlaceCategory.PROGRAM, "북토크", null, "주소",
+        Place place = Place.of(PlaceCategory.COMMUNITY, "북토크", null, "주소",
                 new BigDecimal("37.5984"), new BigDecimal("127.0167"), true, true, null, null, null, null, validTo, "예시");
         ReflectionTestUtils.setField(place, "id", 7L);
         return place;

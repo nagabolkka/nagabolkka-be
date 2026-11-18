@@ -35,4 +35,11 @@ public record GeoPoint(double lat, double lng) {
                 * Math.sin(dLng / 2) * Math.sin(dLng / 2);
         return (int) Math.round(EARTH_RADIUS_M * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
     }
+
+    // 반경 (m) 을 감싸는 네모 — 위도 1도 ≈ 111km, 경도 1도는 위도가 높을수록 짧아짐
+    public GeoBox boxAround(int radiusM) {
+        double dLat = Math.toDegrees(radiusM / EARTH_RADIUS_M);
+        double dLng = dLat / Math.cos(Math.toRadians(lat));
+        return GeoBox.of(lat - dLat, lat + dLat, lng - dLng, lng + dLng);
+    }
 }

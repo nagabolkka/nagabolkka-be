@@ -18,10 +18,10 @@ public record PlacesResponse(
 
     public record PlaceItem(
             @Schema(example = "3") Long placeId,
-            @Schema(description = "LIBRARY · PROGRAM · YOUTH_CENTER · VOLUNTEER", example = "LIBRARY") PlaceCategory category,
+            @Schema(description = "PARK · LIBRARY · COMMUNITY · YOUTH_CENTER", example = "LIBRARY") PlaceCategory category,
             @Schema(example = "아리랑도서관") String name,
             @Schema(example = "서울 성북구 정릉동") String address,
-            @Schema(example = "화~일 09:00-22:00 · 월 휴관", nullable = true) String openHours,
+            @Schema(example = "화~일 09:00-22:00 · 월 휴관", description = "카카오에서 찾은 장소는 null", nullable = true) String openHours,
             @Schema(example = "조용한 열람실과 무인 대출기가 있어요.", nullable = true) String description,
             @Schema(description = "내 위치(없으면 내 구 중심) ↔ 장소 직선거리 (m)", example = "650") int distanceM,
             @Schema(example = "13") int walkMinutes,
@@ -29,8 +29,8 @@ public record PlacesResponse(
             @Schema(description = "혼자 가도 괜찮은 곳", example = "true") boolean soloOk,
             @Schema(example = "37.5950000") BigDecimal lat,
             @Schema(example = "127.0150000") BigDecimal lng,
-            @Schema(description = "프로그램 시작일 (상시면 null)", example = "2026-11-01", nullable = true) LocalDate validFrom,
-            @Schema(description = "프로그램 종료일 (상시면 null)", example = "2026-12-31", nullable = true) LocalDate validTo
+            @Schema(description = "시작일 (상시면 null)", nullable = true) LocalDate validFrom,
+            @Schema(description = "종료일 (상시면 null)", nullable = true) LocalDate validTo
     ) {
 
         public static PlaceItem of(Place place, int distanceM) {
