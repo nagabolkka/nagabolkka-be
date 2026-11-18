@@ -57,6 +57,18 @@ public interface DailyQuestRepository extends JpaRepository<DailyQuest, Long> {
                                      @Param("completed") QuestStatus completed,
                                      @Param("skipped") QuestStatus skipped);
 
+    // 편지 기준점 : 그 기간에 완료한 바깥 퀘스트 장소 (최근 날짜 먼저)
+    @Query("""
+            select new com.nagabolkka.backend.domain.quest.repository.PlacePoint(q.placeLat, q.placeLng)
+            from DailyQuest q
+            where q.user.id = :userId and q.status = :status
+              and q.questDate between :from and :to
+              and q.placeLat is not null and q.placeLng is not null
+            order by q.questDate desc
+            """)
+    List<PlacePoint> findPlacePoints(@Param("userId") Long userId, @Param("status") QuestStatus status,
+                                     @Param("from") LocalDate from, @Param("to") LocalDate to, Pageable pageable);
+
     // 편지 : 그 주 완료 수
     long countByUserIdAndStatusAndQuestDateBetween(Long userId, QuestStatus status, LocalDate from, LocalDate to);
 

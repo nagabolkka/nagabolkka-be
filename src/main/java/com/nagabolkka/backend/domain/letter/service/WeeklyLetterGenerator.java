@@ -1,6 +1,5 @@
 package com.nagabolkka.backend.domain.letter.service;
 
-import com.nagabolkka.backend.domain.district.entity.District;
 import com.nagabolkka.backend.domain.letter.entity.WeeklyLetter;
 import com.nagabolkka.backend.domain.letter.repository.WeeklyLetterRepository;
 import com.nagabolkka.backend.domain.piece.repository.PieceAcquisitionRepository;
@@ -17,6 +16,7 @@ import com.nagabolkka.backend.domain.user.entity.User;
 import com.nagabolkka.backend.domain.user.repository.UserRepository;
 import com.nagabolkka.backend.global.ai.AiClient;
 import com.nagabolkka.backend.global.geo.GeoPoint;
+import com.nagabolkka.backend.domain.place.service.NearbyPlaceSyncer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -45,6 +45,8 @@ public class WeeklyLetterGenerator {
     private final PieceAcquisitionRepository pieceAcquisitionRepository;
     private final UserRegionRepository userRegionRepository;
     private final PlaceRepository placeRepository;
+    private final LetterCenterFinder letterCenterFinder;
+    private final NearbyPlaceSyncer nearbyPlaceSyncer;
     private final AiClient aiClient;
     private final Clock clock;
 
@@ -115,13 +117,13 @@ public class WeeklyLetterGenerator {
                 .orElseGet(() -> LetterTemplate.of(stats));
     }
 
-    // 내 구 · 지금 열린 · 혼자 OK 장소 → 구 중심에서 가까운 6곳 중 주마다 돌아가며 2곳
+    // 그 주에 다녀온 곳 (없으면 구 중심) 3km · 지금 열린 · 혼자 OK → 가까운 6곳 중 주마다 돌아가며 2곳
     List<Long> recommend(User user, LocalDate weekStart) {
-        District district = user.getDistrict();
-        if (district == null) {
+        GeoPoint center = letterCenterFinder.centerOf(user, weekStart);
+        if (center == null) {
             return List.of();
         }
-        GeoPoint center = GeoPoint.of(district);
+        nearbyPlaceSyncer.syncAround(center); // 아무도 그 동네 지도를 안 열었어도 카카오로 채움 (배치 · 트랜잭션 밖)
         LocalDate today = LocalDate.now(clock);
         List<Place> pool = placeRepository.findActiveNear(center, RECOMMEND_RADIUS_M).stream()
                 .filter(place -> place.isOpenOn(today))

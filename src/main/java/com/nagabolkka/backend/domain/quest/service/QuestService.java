@@ -38,6 +38,9 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class QuestService {
 
+    // 지금 위치 ↔ 퀘스트 장소가 검색 반경의 이 배수보다 멀면 다시 찾기 (2계단 700m → 1.4km)
+    static final int MOVED_FAR_FACTOR = 2;
+
     private final UserRepository userRepository;
     private final UserRegionRepository userRegionRepository;
     private final MissionRepository missionRepository;
@@ -51,15 +54,16 @@ public class QuestService {
     private final PracticeSessionRepository practiceSessionRepository;
     private final Clock clock;
 
-    // 오늘 퀘스트 : 있으면 그대로, 없으면 이때 배정 (하루 1개 · 멱등)
+    // 오늘 퀘스트 : 있으면 그대로 (수락 전 · 멀리 이동했으면 장소만 다시), 없으면 이때 배정 (하루 1개 · 멱등)
     @Transactional
     public TodayQuestResponse getToday(Long userId, GeoPoint location) {
         User user = lockOnboardedUser(userId);
-        DailyQuest quest = findOrAssign(user, LocalDate.now(clock), location);
+        DailyQuest quest = findOrAssignNearby(user, LocalDate.now(clock), location);
         return toResponse(quest);
     }
 
     // 오늘 퀘스트 동작 : 수락 · 쪼개기 · 바꾸기 · 오늘은 쉬기 · 지나온 계단 미션 받기
+    // (장소 다시 찾기 X → 버튼 누르는 순간 장소가 바뀌지 않게)
     @Transactional
     public TodayQuestResponse act(Long userId, QuestActionRequest request, GeoPoint location) {
         // 버튼 연타 · 두 화면 동시 요청이 겹치지 않도록 사용자 행을 잠근다
@@ -104,7 +108,7 @@ public class QuestService {
         return toResponse(quest);
     }
 
-    // 오늘 퀘스트 있으면 그대로, 없으면 배정 — 홈에서도 사용
+    // 오늘 퀘스트 있으면 그대로, 없으면 배정 — 동작 · 완료에서 사용
     public DailyQuest findOrAssign(User user, LocalDate today, GeoPoint location) {
         return dailyQuestRepository.findToday(user.getId(), today)
                 .orElseGet(() -> assign(user, today, location));
@@ -113,6 +117,13 @@ public class QuestService {
     // 위치 없이 (완료 처리 등) → 내 구 중심
     public DailyQuest findOrAssign(User user, LocalDate today) {
         return findOrAssign(user, today, null);
+    }
+
+    // 홈 · 오늘 퀘스트 조회용 : 있으면 (수락 전 · 멀리 이동했으면) 장소를 지금 위치로 다시 찾기, 없으면 배정
+    public DailyQuest findOrAssignNearby(User user, LocalDate today, GeoPoint location) {
+        return dailyQuestRepository.findToday(user.getId(), today)
+                .map(quest -> refindIfMovedFar(quest, location))
+                .orElseGet(() -> assign(user, today, location));
     }
 
     // 홈 · 퀘스트가 동시에 불려도 하나만 배정되도록 사용자 행을 잠근다
@@ -124,6 +135,18 @@ public class QuestService {
             throw new CustomException(ErrorCode.ONBOARDING_REQUIRED);
         }
         return user;
+    }
+
+    // 수락 전 · 담기 아님 · 찾은 장소 있음 → 지금 위치가 장소에서 (검색 반경 × 2) 보다 멀면 지금 위치로 다시
+    private DailyQuest refindIfMovedFar(DailyQuest quest, GeoPoint location) {
+        if (location == null || !quest.canRefindPlace()) {
+            return quest;
+        }
+        int limit = QuestPlaceFinder.radiusOf(quest.getRegion().getStageNo()) * MOVED_FAR_FACTOR;
+        if (location.distanceTo(quest.placePoint()) > limit) {
+            questPlaceFinder.fill(quest, location); // 못 찾으면 예전 장소 그대로 (트랜잭션 안 → 변경 감지로 저장)
+        }
+        return quest;
     }
 
     // 쪼갠 퀘스트만 단계 조회 · 쉼의 조각 안내는 1계단 퀘스트일 때만 조회
@@ -150,8 +173,8 @@ public class QuestService {
         Region current = user.getCurrentRegion();
         List<Mission> candidates = missionRepository.findActiveByRegionIds(List.of(current.getId()));
 
-        // 내 구에 지금 비 · 눈 → 비 오는 날 미션 (빗소리 칸 우선)
-        boolean rainy = weatherService.isRainy(user.getDistrict());
+        // 지금 위치에 비 · 눈 → 비 오는 날 미션 (빗소리 칸 우선)
+        boolean rainy = weatherService.isRainy(user.getDistrict(), location);
 
         // 최근 미션 (겹치지 않게)
         List<Long> recentMissionIds = dailyQuestRepository.findRecentMissionIds(user.getId(), today,
@@ -161,7 +184,7 @@ public class QuestService {
                 candidates, recentMissionIds);
 
         DailyQuest quest = DailyQuest.assign(user, today, mission);
-        questPlaceFinder.fill(quest, originOf(user, location)); // 바깥 미션이면 실제 장소
+        questPlaceFinder.fill(quest, origin); // 바깥 미션이면 실제 장소
         return dailyQuestRepository.save(quest);
     }
 

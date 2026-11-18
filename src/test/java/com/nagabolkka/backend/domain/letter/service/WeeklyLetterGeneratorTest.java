@@ -8,6 +8,7 @@ import com.nagabolkka.backend.domain.piece.repository.PieceAcquisitionRepository
 import com.nagabolkka.backend.domain.place.entity.Place;
 import com.nagabolkka.backend.domain.place.entity.PlaceCategory;
 import com.nagabolkka.backend.domain.place.repository.PlaceRepository;
+import com.nagabolkka.backend.domain.place.service.NearbyPlaceSyncer;
 import com.nagabolkka.backend.domain.quest.entity.QuestStatus;
 import com.nagabolkka.backend.domain.quest.repository.DailyQuestRepository;
 import com.nagabolkka.backend.domain.quest.repository.QuestRecordRepository;
@@ -20,6 +21,7 @@ import com.nagabolkka.backend.domain.user.entity.User;
 import com.nagabolkka.backend.domain.user.repository.UserRepository;
 import com.nagabolkka.backend.global.ai.AiClient;
 import com.nagabolkka.backend.global.config.ClockConfig;
+import com.nagabolkka.backend.global.geo.GeoPoint;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -40,11 +42,12 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
-import static org.mockito.ArgumentMatchers.eq;
 
 @ExtendWith(MockitoExtension.class)
 class WeeklyLetterGeneratorTest {
@@ -55,6 +58,7 @@ class WeeklyLetterGeneratorTest {
     private static final LocalDate WEEK_START = LocalDate.of(2026, 11, 9);
     private static final LocalDate WEEK_END = LocalDate.of(2026, 11, 15);
     private static final LocalDateTime BEFORE = LocalDateTime.of(2026, 11, 16, 0, 0);
+    private static final GeoPoint SEONGBUK_CENTER = new GeoPoint(37.5894, 127.0167);
 
     @Mock UserRepository userRepository;
     @Mock WeeklyLetterRepository weeklyLetterRepository;
@@ -64,6 +68,8 @@ class WeeklyLetterGeneratorTest {
     @Mock UserRegionRepository userRegionRepository;
     @Mock PlaceRepository placeRepository;
     @Mock AiClient aiClient;
+    @Mock LetterCenterFinder letterCenterFinder;
+    @Mock NearbyPlaceSyncer nearbyPlaceSyncer;
 
     WeeklyLetterGenerator generator;
     District seongbuk;
@@ -72,11 +78,14 @@ class WeeklyLetterGeneratorTest {
     @BeforeEach
     void setUp() {
         generator = new WeeklyLetterGenerator(userRepository, weeklyLetterRepository, dailyQuestRepository,
-                questRecordRepository, pieceAcquisitionRepository, userRegionRepository, placeRepository, aiClient, CLOCK);
+                questRecordRepository, pieceAcquisitionRepository, userRegionRepository, placeRepository,
+                letterCenterFinder, nearbyPlaceSyncer, aiClient, CLOCK);
         seongbuk = District.of("성북구", new BigDecimal("37.5894"), new BigDecimal("127.0167"), 61, 127);
         ReflectionTestUtils.setField(seongbuk, "id", 10L);
         stage2 = Region.of(2, "바람의 숲", "문 앞", "바람의 조각", "#9DD49A", "a.png", "b.png");
         ReflectionTestUtils.setField(stage2, "id", 2L);
+        // 기준점 = 성북구 중심 (건너뛰는 테스트에선 안 불려서 lenient)
+        lenient().when(letterCenterFinder.centerOf(any(), any())).thenReturn(SEONGBUK_CENTER);
     }
 
     private User user(Long id, String nickname) {
@@ -244,5 +253,18 @@ class WeeklyLetterGeneratorTest {
 
         assertThat(thisWeek).hasSize(2);
         assertThat(nextWeek).hasSize(2).isNotEqualTo(thisWeek);
+    }
+
+    @Test
+    @DisplayName("추천 : 다녀온 곳 (역삼) 주변을 채우고 그 기준으로 조회")
+    void recommend_aroundLastOuting() {
+        User user = user(1L, "윤지");
+        GeoPoint yeoksam = new GeoPoint(37.5006, 127.0366);
+        given(letterCenterFinder.centerOf(user, WEEK_START)).willReturn(yeoksam);
+        given(placeRepository.findActiveNear(yeoksam, 3_000)).willReturn(List.of());
+
+        assertThat(generator.recommend(user, WEEK_START)).isEmpty();
+
+        then(nearbyPlaceSyncer).should().syncAround(yeoksam);
     }
 }

@@ -2,6 +2,7 @@ package com.nagabolkka.backend.global.weather;
 
 import com.nagabolkka.backend.domain.district.entity.District;
 import com.nagabolkka.backend.global.config.ClockConfig;
+import com.nagabolkka.backend.global.geo.GeoPoint;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -100,5 +101,23 @@ class WeatherServiceTest {
         assertThat(service.get(null)).isEqualTo(Weather.clear());
         assertThat(service.isRainy(null)).isFalse();
         verifyNoInteractions(kmaClient);
+    }
+
+    @Test
+    void 위치를_보내면_그_위치_격자로_조회() {
+        given(kmaClient.currentWeather(anyInt(), anyInt(), any())).willReturn(Optional.of(RAIN));
+
+        assertThat(service.get(SEONGBUK, new GeoPoint(37.5006, 127.0366))).isEqualTo(RAIN); // 역삼역
+
+        verify(kmaClient).currentWeather(61, 125, LocalDateTime.of(2026, 11, 14, 10, 50));
+    }
+
+    @Test
+    void 위치가_없으면_구_격자() {
+        given(kmaClient.currentWeather(anyInt(), anyInt(), any())).willReturn(Optional.of(RAIN));
+
+        service.isRainy(SEONGBUK, null);
+
+        verify(kmaClient).currentWeather(61, 127, LocalDateTime.of(2026, 11, 14, 10, 50));
     }
 }
