@@ -59,7 +59,7 @@ public class PlaceController {
     })
     @GetMapping
     public PlacesResponse getPlaces(@Parameter(hidden = true) @AuthenticationPrincipal Long userId,
-                                    @Parameter(description = "카테고리 (없으면 전체)")
+                                    @Parameter(description = "PARK · LIBRARY · COMMUNITY · YOUTH_CENTER (없으면 전체)")
                                     @RequestParam(required = false) PlaceCategory category,
                                     @Parameter(description = "무료만")
                                     @RequestParam(defaultValue = "false") boolean free,
@@ -78,13 +78,12 @@ public class PlaceController {
         return placeService.getPlaces(userId, new PlaceFilter(category, free, solo, within), location);
     }
 
-    @Operation(summary = "미션으로 담기",
-            description = "고른 장소를 오늘 (또는 내일) 퀘스트로 담습니다. 바꾸기 횟수는 줄지 않아요.\n\n"
-                    + "- 오늘 퀘스트가 없음 · 배정 · 진행 중 → 바로 교체 `REPLACED_TODAY` (진행 중이면 프론트가 확인창 먼저)\n"
-                    + "- 오늘 퀘스트를 완료 · 쉬기 했으면 → 내일 첫 퀘스트 `RESERVED_TOMORROW` (`questId: null`)\n"
-                    + "- 기다리는 담기는 1개 : 새로 담으면 예전 것은 취소\n"
-                    + "- 담기 퀘스트 완료 조각 : 2 · 3계단 담기 칸, 1 · 4 · 5계단 도전 칸\n"
-                    + "- `lat` · `lng` (선택) : 거리 기준. 없으면 내 구 중심 (좌표는 저장하지 않음)")
+    @Operation(summary = "장소 목록",
+            description = "내 위치 주변 3km 의 공원 · 도서관 · 주민 공간 · 청년 공간을 가까운 순으로 돌려줍니다. (상세 API 없음 → 목록 데이터로 상세 화면)\n\n"
+                    + "- 처음 가는 동네면 카카오 로컬로 주변 장소를 찾아 저장한 뒤 돌려줍니다 (같은 동네는 7일 동안 다시 찾지 않음)\n"
+                    + "- 카카오에서 찾은 장소 : 무료 · 혼자 가능 · `openHours` null · 카테고리 기본 설명\n"
+                    + "- 필터 : `category` (없으면 전체) · `free` 무료만 · `solo` 혼자 가능만 · `within` 이 거리 (m) 안만\n"
+                    + "- `lat` · `lng` (선택) : 기준 위치. 없으면 내 구 중심 (좌표는 저장하지 않음)")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "담기 결과",
                     content = @Content(schema = @Schema(implementation = SavePlaceResponse.class))),

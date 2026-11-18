@@ -36,6 +36,7 @@ public class WeeklyLetterGenerator {
 
     static final int RECOMMEND_COUNT = 2;
     static final int RECOMMEND_POOL = 6; // 가까운 6곳 안에서 주마다 돌아가며 2곳
+    static final int RECOMMEND_RADIUS_M = 3_000; // 내 구 중심 3km (동네 지도와 같은 반경)
 
     private final UserRepository userRepository;
     private final WeeklyLetterRepository weeklyLetterRepository;
@@ -122,7 +123,7 @@ public class WeeklyLetterGenerator {
         }
         GeoPoint center = GeoPoint.of(district);
         LocalDate today = LocalDate.now(clock);
-        List<Place> pool = placeRepository.findActiveByDistrictId(district.getId()).stream()
+        List<Place> pool = placeRepository.findActiveNear(center, RECOMMEND_RADIUS_M).stream()
                 .filter(place -> place.isOpenOn(today))
                 .filter(Place::isSoloOk)
                 .sorted(Comparator.comparingInt((Place place) -> center.distanceTo(place.point()))
