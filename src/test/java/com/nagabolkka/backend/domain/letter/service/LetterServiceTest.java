@@ -12,6 +12,7 @@ import com.nagabolkka.backend.domain.region.entity.Region;
 import com.nagabolkka.backend.domain.user.entity.User;
 import com.nagabolkka.backend.domain.user.repository.UserRepository;
 import com.nagabolkka.backend.global.config.ClockConfig;
+import com.nagabolkka.backend.global.geo.GeoPoint;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -40,10 +41,12 @@ class LetterServiceTest {
     private static final Clock CLOCK = Clock.fixed(
             ZonedDateTime.of(2026, 11, 18, 10, 0, 0, 0, ClockConfig.KST).toInstant(), ClockConfig.KST);
     private static final LocalDate WEEK_START = LocalDate.of(2026, 11, 9);
+    private static final GeoPoint SEONGBUK_CENTER = new GeoPoint(37.5894, 127.0167);
 
     @Mock UserRepository userRepository;
     @Mock WeeklyLetterRepository weeklyLetterRepository;
     @Mock PlaceRepository placeRepository;
+    @Mock LetterCenterFinder letterCenterFinder;
 
     LetterService service;
     User user;
@@ -51,7 +54,7 @@ class LetterServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new LetterService(userRepository, weeklyLetterRepository, placeRepository, CLOCK);
+        service = new LetterService(userRepository, weeklyLetterRepository, placeRepository, letterCenterFinder, CLOCK);
         seongbuk = District.of("성북구", new BigDecimal("37.5894"), new BigDecimal("127.0167"), 61, 127);
         Region stage2 = Region.of(2, "바람의 숲", "문 앞", "바람의 조각", "#9DD49A", "a.png", "b.png");
         user = User.createKakaoUser("윤지");
@@ -81,8 +84,9 @@ class LetterServiceTest {
     }
 
     @Test
-    @DisplayName("편지 → 주 · 닉네임 · 본문 · 통계 · 장소 거리")
+    @DisplayName("편지 → 주 · 닉네임 · 본문 · 통계 · 장소 거리 (기준점 = 그 주 다녀온 곳)")
     void getLatest() {
+        given(letterCenterFinder.centerOf(user, WEEK_START)).willReturn(SEONGBUK_CENTER);
         given(weeklyLetterRepository.findFirstByUserIdOrderByWeekStartDesc(USER_ID))
                 .willReturn(Optional.of(letter(List.of(3L))));
         given(placeRepository.findAllById(List.of(3L))).willReturn(List.of(place(3L, "아리랑도서관", null)));
@@ -103,6 +107,7 @@ class LetterServiceTest {
     @Test
     @DisplayName("저장 순서 그대로 · 기간 끝난 장소 · 지워진 장소는 뺌")
     void getLatest_filterClosed() {
+        given(letterCenterFinder.centerOf(user, WEEK_START)).willReturn(SEONGBUK_CENTER);
         given(weeklyLetterRepository.findFirstByUserIdOrderByWeekStartDesc(USER_ID))
                 .willReturn(Optional.of(letter(List.of(7L, 3L, 9L))));
         given(placeRepository.findAllById(List.of(7L, 3L, 9L))).willReturn(List.of(
