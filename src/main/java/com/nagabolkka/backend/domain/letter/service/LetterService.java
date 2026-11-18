@@ -31,6 +31,7 @@ public class LetterService {
     private final UserRepository userRepository;
     private final WeeklyLetterRepository weeklyLetterRepository;
     private final PlaceRepository placeRepository;
+    private final LetterCenterFinder letterCenterFinder;
     private final Clock clock;
 
     // 가장 최근 편지 · 없으면 empty → 컨트롤러가 204
@@ -50,7 +51,7 @@ public class LetterService {
         LocalDate today = LocalDate.now(clock);
         Map<Long, Place> byId = placeRepository.findAllById(ids).stream()
                 .collect(Collectors.toMap(Place::getId, Function.identity()));
-        GeoPoint center = GeoPoint.of(user.getDistrict());
+        GeoPoint center = letterCenterFinder.centerOf(user, letter.getWeekStart()); // 만들 때와 같은 기준점
         return ids.stream()
                 .map(byId::get)
                 .filter(place -> place != null && place.isOpenOn(today))

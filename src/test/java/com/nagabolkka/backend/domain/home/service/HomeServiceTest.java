@@ -116,12 +116,12 @@ class HomeServiceTest {
 
     private void givenHome(Weather weather) {
         given(userRepository.findByIdForUpdate(USER_ID)).willReturn(Optional.of(user));
-        given(questService.findOrAssign(user, TODAY, null)).willReturn(quest);
+        given(questService.findOrAssignNearby(user, TODAY, null)).willReturn(quest);
         given(userRegionRepository.findByUserIdOrderByRegionStageNoAsc(USER_ID)).willReturn(userRegions);
         given(pieceAcquisitionRepository.countByUserId(USER_ID)).willReturn(2L);
         given(goalStepRepository.countByGoalId(1L)).willReturn(4L);
         given(userGoalStepRepository.countChecked(USER_ID, 1L)).willReturn(2L);
-        given(weatherService.get(any())).willReturn(weather);
+        given(weatherService.get(any(), any())).willReturn(weather);
     }
 
     @Test

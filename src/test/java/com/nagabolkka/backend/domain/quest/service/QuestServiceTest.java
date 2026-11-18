@@ -23,6 +23,7 @@ import com.nagabolkka.backend.global.common.Difficulty;
 import com.nagabolkka.backend.global.config.ClockConfig;
 import com.nagabolkka.backend.global.exception.CustomException;
 import com.nagabolkka.backend.global.exception.ErrorCode;
+import com.nagabolkka.backend.global.geo.GeoPoint;
 import com.nagabolkka.backend.global.weather.WeatherService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -35,6 +36,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -178,5 +180,63 @@ class QuestServiceTest {
 
         assertThat(questService.getToday(USER_ID, null).restPieceAvailable()).isFalse();
         then(pieceAcquisitionRepository).should(never()).existsByUserIdAndPieceType(any(), any());
+    }
+
+    // 2계단 바깥 미션 · 카카오 검색어 있음 · 성북구에서 찾은 공원 (검색 반경 700m → 1.4km 넘게 멀면 다시 찾기)
+    private DailyQuest parkQuestFoundInSeongbuk() {
+        stage2Easy.changeKakaoQuery("근린공원");
+        DailyQuest quest = DailyQuest.assign(user, TODAY, stage2Easy);
+        quest.foundPlace("111", "고갯마루어린이공원", new BigDecimal("37.6000000"), new BigDecimal("127.0100000"), 454);
+        return quest;
+    }
+
+    @Test
+    @DisplayName("수락 전 · 멀리 이동 (역삼동) → 지금 위치로 장소 다시 찾기")
+    void getToday_movedFar_refind() {
+        DailyQuest quest = parkQuestFoundInSeongbuk();
+        GeoPoint yeoksam = new GeoPoint(37.5006, 127.0366);
+        given(userRepository.findByIdForUpdate(USER_ID)).willReturn(Optional.of(user));
+        given(dailyQuestRepository.findToday(USER_ID, TODAY)).willReturn(Optional.of(quest));
+
+        questService.getToday(USER_ID, yeoksam);
+
+        then(questPlaceFinder).should().fill(quest, yeoksam);
+    }
+
+    @Test
+    @DisplayName("가까이 있으면 (1.4km 안) 그대로")
+    void getToday_near_keep() {
+        DailyQuest quest = parkQuestFoundInSeongbuk();
+        given(userRepository.findByIdForUpdate(USER_ID)).willReturn(Optional.of(user));
+        given(dailyQuestRepository.findToday(USER_ID, TODAY)).willReturn(Optional.of(quest));
+
+        questService.getToday(USER_ID, new GeoPoint(37.6050, 127.0100)); // 약 550m
+
+        then(questPlaceFinder).should(never()).fill(any(), any());
+    }
+
+    @Test
+    @DisplayName("이미 수락했으면 멀리 가도 그대로")
+    void getToday_accepted_keep() {
+        DailyQuest quest = parkQuestFoundInSeongbuk();
+        quest.accept(LocalDateTime.of(2026, 11, 12, 9, 0));
+        given(userRepository.findByIdForUpdate(USER_ID)).willReturn(Optional.of(user));
+        given(dailyQuestRepository.findToday(USER_ID, TODAY)).willReturn(Optional.of(quest));
+
+        questService.getToday(USER_ID, new GeoPoint(37.5006, 127.0366));
+
+        then(questPlaceFinder).should(never()).fill(any(), any());
+    }
+
+    @Test
+    @DisplayName("위치를 안 보내면 그대로")
+    void getToday_noLocation_keep() {
+        DailyQuest quest = parkQuestFoundInSeongbuk();
+        given(userRepository.findByIdForUpdate(USER_ID)).willReturn(Optional.of(user));
+        given(dailyQuestRepository.findToday(USER_ID, TODAY)).willReturn(Optional.of(quest));
+
+        questService.getToday(USER_ID, null);
+
+        then(questPlaceFinder).should(never()).fill(any(), any());
     }
 }

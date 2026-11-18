@@ -8,6 +8,7 @@ import com.nagabolkka.backend.domain.piece.repository.PieceAcquisitionRepository
 import com.nagabolkka.backend.domain.place.entity.Place;
 import com.nagabolkka.backend.domain.place.entity.PlaceCategory;
 import com.nagabolkka.backend.domain.place.repository.PlaceRepository;
+import com.nagabolkka.backend.domain.place.service.NearbyPlaceSyncer;
 import com.nagabolkka.backend.domain.quest.entity.QuestStatus;
 import com.nagabolkka.backend.domain.quest.repository.DailyQuestRepository;
 import com.nagabolkka.backend.domain.quest.repository.QuestRecordRepository;
@@ -20,6 +21,7 @@ import com.nagabolkka.backend.domain.user.entity.User;
 import com.nagabolkka.backend.domain.user.repository.UserRepository;
 import com.nagabolkka.backend.global.ai.AiClient;
 import com.nagabolkka.backend.global.config.ClockConfig;
+import com.nagabolkka.backend.global.geo.GeoPoint;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -40,8 +42,10 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 
@@ -54,6 +58,7 @@ class WeeklyLetterGeneratorTest {
     private static final LocalDate WEEK_START = LocalDate.of(2026, 11, 9);
     private static final LocalDate WEEK_END = LocalDate.of(2026, 11, 15);
     private static final LocalDateTime BEFORE = LocalDateTime.of(2026, 11, 16, 0, 0);
+    private static final GeoPoint SEONGBUK_CENTER = new GeoPoint(37.5894, 127.0167);
 
     @Mock UserRepository userRepository;
     @Mock WeeklyLetterRepository weeklyLetterRepository;
@@ -63,6 +68,8 @@ class WeeklyLetterGeneratorTest {
     @Mock UserRegionRepository userRegionRepository;
     @Mock PlaceRepository placeRepository;
     @Mock AiClient aiClient;
+    @Mock LetterCenterFinder letterCenterFinder;
+    @Mock NearbyPlaceSyncer nearbyPlaceSyncer;
 
     WeeklyLetterGenerator generator;
     District seongbuk;
@@ -71,11 +78,14 @@ class WeeklyLetterGeneratorTest {
     @BeforeEach
     void setUp() {
         generator = new WeeklyLetterGenerator(userRepository, weeklyLetterRepository, dailyQuestRepository,
-                questRecordRepository, pieceAcquisitionRepository, userRegionRepository, placeRepository, aiClient, CLOCK);
+                questRecordRepository, pieceAcquisitionRepository, userRegionRepository, placeRepository,
+                letterCenterFinder, nearbyPlaceSyncer, aiClient, CLOCK);
         seongbuk = District.of("성북구", new BigDecimal("37.5894"), new BigDecimal("127.0167"), 61, 127);
         ReflectionTestUtils.setField(seongbuk, "id", 10L);
         stage2 = Region.of(2, "바람의 숲", "문 앞", "바람의 조각", "#9DD49A", "a.png", "b.png");
         ReflectionTestUtils.setField(stage2, "id", 2L);
+        // 기준점 = 성북구 중심 (건너뛰는 테스트에선 안 불려서 lenient)
+        lenient().when(letterCenterFinder.centerOf(any(), any())).thenReturn(SEONGBUK_CENTER);
     }
 
     private User user(Long id, String nickname) {
@@ -122,7 +132,7 @@ class WeeklyLetterGeneratorTest {
         User user = user(1L, "윤지");
         given(userRepository.findLetterTargets(Role.USER, BEFORE)).willReturn(List.of(user));
         givenStats(user, 3);
-        given(placeRepository.findActiveByDistrictId(10L)).willReturn(List.of(place(3L, "도서관", 37.59, true, null)));
+        given(placeRepository.findActiveNear(any(), eq(3_000))).willReturn(List.of(place(3L, "도서관", 37.59, true, null)));
         given(aiClient.weeklyLetter(any())).willReturn(Optional.of(new AiClient.LetterResult("  AI 편지  ", false)));
 
         WeeklyLetterGenerator.Result result = generator.generate(WEEK_START);
@@ -147,7 +157,7 @@ class WeeklyLetterGeneratorTest {
         User user = user(1L, "윤지");
         given(userRepository.findLetterTargets(Role.USER, BEFORE)).willReturn(List.of(user));
         givenStats(user, 0);
-        given(placeRepository.findActiveByDistrictId(10L)).willReturn(List.of());
+        given(placeRepository.findActiveNear(any(), eq(3_000))).willReturn(List.of());
 
         generator.generate(WEEK_START);
 
@@ -162,7 +172,7 @@ class WeeklyLetterGeneratorTest {
         User user = user(1L, "윤지");
         given(userRepository.findLetterTargets(Role.USER, BEFORE)).willReturn(List.of(user));
         givenStats(user, 2);
-        given(placeRepository.findActiveByDistrictId(10L)).willReturn(List.of());
+        given(placeRepository.findActiveNear(any(), eq(3_000))).willReturn(List.of());
         given(aiClient.weeklyLetter(any())).willReturn(Optional.empty());
 
         generator.generate(WEEK_START);
@@ -190,7 +200,7 @@ class WeeklyLetterGeneratorTest {
         User user = user(1L, "윤지");
         given(userRepository.findLetterTargets(Role.USER, BEFORE)).willReturn(List.of(user));
         givenStats(user, 0);
-        given(placeRepository.findActiveByDistrictId(10L)).willReturn(List.of());
+        given(placeRepository.findActiveNear(any(), eq(3_000))).willReturn(List.of());
         given(weeklyLetterRepository.save(any())).willThrow(new DataIntegrityViolationException("uk"));
 
         assertThat(generator.generate(WEEK_START)).isEqualTo(new WeeklyLetterGenerator.Result(WEEK_START, 0, 1, 0));
@@ -205,7 +215,7 @@ class WeeklyLetterGeneratorTest {
         given(dailyQuestRepository.countByUserIdAndStatusAndQuestDateBetween(1L, QuestStatus.COMPLETED, WEEK_START, WEEK_END))
                 .willThrow(new IllegalStateException("db"));
         givenStats(ok, 0);
-        given(placeRepository.findActiveByDistrictId(10L)).willReturn(List.of());
+        given(placeRepository.findActiveNear(any(), eq(3_000))).willReturn(List.of());
 
         WeeklyLetterGenerator.Result result = generator.generate(WEEK_START);
 
@@ -217,7 +227,7 @@ class WeeklyLetterGeneratorTest {
     @DisplayName("추천 : 닫힌 · 혼자 어려운 장소 빼고 가까운 순 2곳")
     void recommend_filterAndSort() {
         User user = user(1L, "윤지");
-        given(placeRepository.findActiveByDistrictId(10L)).willReturn(List.of(
+        given(placeRepository.findActiveNear(any(), eq(3_000))).willReturn(List.of(
                 place(1L, "먼 곳", 37.70, true, null),
                 place(2L, "가까운 곳", 37.59, true, null),
                 place(3L, "기간 끝", 37.5894, true, LocalDate.of(2026, 11, 1)),
@@ -234,7 +244,7 @@ class WeeklyLetterGeneratorTest {
     @DisplayName("추천 : 다음 주엔 다른 조합 (가까운 6곳 안에서 돌아감)")
     void recommend_rotates() {
         User user = user(1L, "윤지");
-        given(placeRepository.findActiveByDistrictId(10L)).willReturn(List.of(
+        given(placeRepository.findActiveNear(any(), eq(3_000))).willReturn(List.of(
                 place(1L, "a", 37.590, true, null), place(2L, "b", 37.591, true, null),
                 place(3L, "c", 37.592, true, null), place(4L, "d", 37.593, true, null)));
 
@@ -243,5 +253,18 @@ class WeeklyLetterGeneratorTest {
 
         assertThat(thisWeek).hasSize(2);
         assertThat(nextWeek).hasSize(2).isNotEqualTo(thisWeek);
+    }
+
+    @Test
+    @DisplayName("추천 : 다녀온 곳 (역삼) 주변을 채우고 그 기준으로 조회")
+    void recommend_aroundLastOuting() {
+        User user = user(1L, "윤지");
+        GeoPoint yeoksam = new GeoPoint(37.5006, 127.0366);
+        given(letterCenterFinder.centerOf(user, WEEK_START)).willReturn(yeoksam);
+        given(placeRepository.findActiveNear(yeoksam, 3_000)).willReturn(List.of());
+
+        assertThat(generator.recommend(user, WEEK_START)).isEmpty();
+
+        then(nearbyPlaceSyncer).should().syncAround(yeoksam);
     }
 }
