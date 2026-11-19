@@ -185,11 +185,11 @@ public class SeedDataInitializer implements ApplicationRunner {
             // 3 · 발견의 마을
             new MissionSeed(3, 1, "공원 벤치에 15분 앉아 있기",
                     "사람이 적은 벤치를 골라 앉아요. 아무것도 안 해도 돼요.",
-                    Difficulty.EASY, false, false, "개운산 근린공원 입구", 30,
+                    Difficulty.EASY, false, false, "가까운 근린공원", 30,
                     List.of("공원 입구까지 가보기", "빈 벤치 찾아보기", "5분만 앉아 있기")),
             new MissionSeed(3, 2, "도서관에서 책 한 권 빌려보기",
-                    "종암동 주민센터 4·5층에 있는 작은 도서관이에요. 아무 책이나 한 권이면 충분해요.",
-                    Difficulty.NORMAL, false, false, "종암동새날도서관", 40,
+                    "동네 공공도서관이면 어디든 괜찮아요. 아무 책이나 한 권이면 충분해요.",
+                    Difficulty.NORMAL, false, false, "동네 도서관", 40,
                     List.of("도서관 입구까지 가보기", "서가 한 줄 둘러보기", "책 한 권 빌리기")),
             new MissionSeed(3, 3, "카페에서 음료 주문해 20분 머물기",
                     "창가 자리가 있는 작은 카페예요. 주문은 키오스크로도 할 수 있어요.",
@@ -197,33 +197,33 @@ public class SeedDataInitializer implements ApplicationRunner {
                     List.of("카페 메뉴 미리 보기", "키오스크로 주문하기", "10분만 앉아 있기")),
             new MissionSeed(3, 4, "도서관 열람실에서 30분 머물기",
                     "비 오는 날엔 조용한 실내가 좋아요. 열람실 창가에서 빗소리를 들으며 쉬다 와요.",
-                    Difficulty.NORMAL, false, true, "종암동새날도서관 열람실", 40,
+                    Difficulty.NORMAL, false, true, "동네 도서관 열람실", 40,
                     List.of("우산 챙겨 나가기", "열람실 빈자리 찾기", "30분 머물러 보기")),
             // 4 · 만남의 정원
             new MissionSeed(4, 1, "북토크 뒷자리에서 듣기만 하기",
-                    "말하지 않아도 되는 북토크예요. 뒷자리에 앉아 듣기만 해도 충분해요.",
-                    Difficulty.EASY, false, false, "성북정보도서관", 90,
+                    "도서관마다 북토크 · 강연 일정이 달라요. 가까운 곳 일정을 먼저 보고, 뒷자리에서 듣기만 해도 충분해요.",
+                    Difficulty.EASY, false, false, "동네 도서관", 90,
                     List.of("북토크 일정 확인하기", "강연실 입구까지 가보기", "뒷자리에서 20분 듣기")),
             new MissionSeed(4, 2, "원데이 클래스 하나 신청하기",
                     "신청까지만 해요. 클래스에 가는 건 다음 퀘스트예요.",
-                    Difficulty.NORMAL, false, false, "서울청년센터 성북", 10,
+                    Difficulty.NORMAL, false, false, "가까운 청년센터", 10,
                     List.of("클래스 목록 둘러보기", "마음에 드는 것 하나 고르기", "신청 버튼 누르기")),
             new MissionSeed(4, 3, "프로그램에서 옆 사람에게 인사 한 번",
                     "“안녕하세요” 한 마디면 돼요. 연습실에서 먼저 연습해봐도 좋아요.",
-                    Difficulty.CHALLENGE, false, false, "서울청년센터 성북", 120,
+                    Difficulty.CHALLENGE, false, false, "가까운 청년센터", 120,
                     List.of("연습실에서 인사 연습하기", "프로그램 자리에 앉아보기", "눈인사 한 번 하기")),
             new MissionSeed(4, 4, "실내 원데이 클래스 둘러보기",
                     "비 오는 날엔 실내 프로그램을 구경만 해도 괜찮아요. 참여하지 않아도 돼요.",
-                    Difficulty.NORMAL, false, true, "서울청년센터 성북", 30,
+                    Difficulty.NORMAL, false, true, "가까운 청년센터", 30,
                     List.of("클래스 일정 확인하기", "센터 2층까지 가보기", "클래스 하나 구경하기")),
             // 5 · 새로운 세상 (비 오는 날 = 도전 미션, 실내)
             new MissionSeed(5, 1, "청년센터 라운지 들러보기",
-                    "만 19–39세 청년 누구나 예약 없이 쓰는 라운지예요. 1층에서 청년정책 안내 책자 하나 챙겨 오면 완료예요.",
-                    Difficulty.EASY, false, false, "서울청년센터 성북 2층 오픈라운지", 30,
+                    "청년이라면 예약 없이 들를 수 있는 라운지가 많아요. 청년정책 안내 책자 하나 챙겨 오면 완료예요.",
+                    Difficulty.EASY, false, false, "청년센터 라운지", 30,
                     List.of("운영 시간 확인하기", "센터 입구까지 가보기", "안내 책자 하나 챙기기")),
             new MissionSeed(5, 2, "봉사활동 1회 신청하기",
                     "동네에서 하는 2시간짜리 봉사를 골라 신청까지만 해요. 봉사 시간도 인정돼요.",
-                    Difficulty.NORMAL, true, false, "성북구자원봉사센터 (온라인 신청)", 15,
+                    Difficulty.NORMAL, true, false, "자원봉사센터 (온라인 신청)", 15,
                     List.of("봉사 공고 읽어보기", "날짜 하나 골라보기", "신청서 제출하기")),
             new MissionSeed(5, 3, "알바 공고에 문의 전화 걸기",
                     "연습실에서 ‘첫 전화’를 먼저 연습해봐도 좋아요.",
@@ -476,7 +476,8 @@ public class SeedDataInitializer implements ApplicationRunner {
                     List.of("등록할 것 다시 확인하기", "일정 고르기", "등록 마치기"))
     );
 
-    // 바깥 미션 기본 장소 이름 → 카카오 로컬 검색어 (없는 이름 = 검색 안 함 : 현관 · 집 앞 · 복도 · 프로그램 장소 등)
+    // 바깥 미션 기본 장소 이름 → 카카오 로컬 검색어 (장소 '종류' 로 · 특정 장소 이름 X → 어느 동네에서든 찾음)
+    // 없는 이름 = 검색 안 함 : 현관 · 집 앞 · 복도 · 행사장 · 프로그램 장소 등
     private static final Map<String, String> PLACE_QUERIES = Map.ofEntries(
             // 2계단 문 앞
             Map.entry("가까운 편의점", "편의점"),
@@ -485,24 +486,47 @@ public class SeedDataInitializer implements ApplicationRunner {
             Map.entry("동네 생활용품점", "다이소"),
             Map.entry("동네 분식집", "분식"),
             Map.entry("동네 시장", "전통시장"),
+            Map.entry("가까운 버스 정류장", "버스정류장"),
             // 3계단 동네
-            Map.entry("개운산 근린공원 입구", "근린공원"),
-            Map.entry("종암동새날도서관", "종암동새날도서관"),
-            Map.entry("조용한 동네 카페", "카페"),
+            Map.entry("가까운 근린공원", "근린공원"),
             Map.entry("동네 산책로", "근린공원"),
             Map.entry("가까운 공원", "근린공원"),
             Map.entry("동네 도서관", "공공도서관"),
+            Map.entry("동네 도서관 열람실", "공공도서관"),
+            Map.entry("조용한 동네 카페", "카페"),
+            Map.entry("동네 카페", "카페"),
             Map.entry("동네 서점", "서점"),
             Map.entry("동네 식당", "백반"),
-            Map.entry("동네 주민센터", "주민센터"),
-            Map.entry("동네 카페", "카페"),
+            Map.entry("동네 주민센터", "행정복지센터"),
             Map.entry("동네 미용실", "미용실"),
+            Map.entry("동네 체육센터", "체육센터"),
             // 4 · 5계단 사람 곁 · 사회 연결
-            Map.entry("서울청년센터 성북", "서울청년센터 성북"),
-            Map.entry("서울청년센터 성북 2층 오픈라운지", "서울청년센터 성북"),
+            Map.entry("가까운 청년센터", "청년센터"),
+            Map.entry("청년센터 라운지", "청년센터"),
+            Map.entry("청년센터", "청년센터"),
             Map.entry("청년 공간 라운지", "청년공간"),
-            Map.entry("청년 공간", "청년공간"),
-            Map.entry("청년센터", "청년공간")
+            Map.entry("청년 공간", "청년공간")
+    );
+
+    // 예전 시드의 성북 고정 장소 이름 → 새 이름 (운영 DB 기존 미션을 시작할 때 정리)
+    private static final Map<String, String> PLACE_RENAMES = Map.of(
+            "개운산 근린공원 입구", "가까운 근린공원",
+            "종암동새날도서관", "동네 도서관",
+            "종암동새날도서관 열람실", "동네 도서관 열람실",
+            "성북정보도서관", "동네 도서관",
+            "서울청년센터 성북", "가까운 청년센터",
+            "서울청년센터 성북 2층 오픈라운지", "청년센터 라운지",
+            "성북구자원봉사센터 (온라인 신청)", "자원봉사센터 (온라인 신청)"
+    );
+
+    // 특정 장소 · 행사가 박힌 설명 (미션 제목 → 새 설명) — MISSIONS 의 설명과 같은 문장
+    private static final Map<String, String> DESCRIPTION_FIXES = Map.of(
+            "도서관에서 책 한 권 빌려보기",
+            "동네 공공도서관이면 어디든 괜찮아요. 아무 책이나 한 권이면 충분해요.",
+            "청년센터 라운지 들러보기",
+            "청년이라면 예약 없이 들를 수 있는 라운지가 많아요. 청년정책 안내 책자 하나 챙겨 오면 완료예요.",
+            "북토크 뒷자리에서 듣기만 하기",
+            "도서관마다 북토크 · 강연 일정이 달라요. 가까운 곳 일정을 먼저 보고, 뒷자리에서 듣기만 해도 충분해요."
     );
 
     private static final int PRACTICE_MAX_TURNS = 3;
@@ -517,7 +541,7 @@ public class SeedDataInitializer implements ApplicationRunner {
             new PracticeSeed("FIRST_VISIT", "첫 방문", "도서관에서 회원증 만들기", "도서관 1층 안내데스크 직원", 4, 5,
                     new MissionSeed(3, 2, "도서관에 가서 회원증 만들기",
                             "신분증만 챙기면 5분이면 만들어요. 연습실에서 한 말 그대로 해 봐요.",
-                            Difficulty.NORMAL, false, false, "종암동새날도서관", 30,
+                            Difficulty.NORMAL, false, false, "동네 도서관", 30,
                             List.of("신분증 챙기기", "1층 안내데스크까지 가기", "회원증 만들어 달라고 말하기"))),
             new PracticeSeed("INTERVIEW", "모의 면접", "동네 카페 아르바이트 면접 보기", "동네 카페 점장", 5, 4,
                     new MissionSeed(5, 1, "동네 아르바이트 공고 하나 찾아보기",
@@ -583,7 +607,8 @@ public class SeedDataInitializer implements ApplicationRunner {
         seedMissions();
         seedPlaceMissions();
         seedPracticeScenarios();
-        seedKakaoQueries();
+        renameMissionPlaces();
+        syncKakaoQueries();
         seedPlaces();
         log.info("시드 데이터 확인 완료 (구 {} · 지역 {} · 목표 {} · 조각 {} · 미션 {} · 장소 {})",
                 districtRepository.count(), regionRepository.count(), goalRepository.count(),
@@ -662,19 +687,39 @@ public class SeedDataInitializer implements ApplicationRunner {
         }
     }
 
-    // 바깥 미션 검색어 채우기 · 비어 있는 것만 (운영 DB 기존 미션도 이때 채워짐)
-    private void seedKakaoQueries() {
+    // 성북 고정 장소 이름 · 설명 정리 (운영 DB 기존 미션 포함 · 이미 바뀐 건 그대로)
+    private void renameMissionPlaces() {
+        int updated = 0;
+        for (Mission mission : missionRepository.findAll()) {
+            String newPlaceName = PLACE_RENAMES.get(mission.getPlaceName());
+            if (newPlaceName != null) {
+                mission.changePlaceName(newPlaceName); // run 이 @Transactional → 변경 감지로 저장
+                updated++;
+            }
+            String newDescription = DESCRIPTION_FIXES.get(mission.getTitle());
+            if (newDescription != null && !newDescription.equals(mission.getDescription())) {
+                mission.changeDescription(newDescription);
+                updated++;
+            }
+        }
+        if (updated > 0) {
+            log.info("미션 장소 이름 · 설명 {}개 정리", updated);
+        }
+    }
+
+    // 바깥 미션 검색어를 표와 맞춤 · 다르면 덮어씀 (예전 특정 장소 검색어도 고쳐짐)
+    private void syncKakaoQueries() {
         int updated = 0;
         for (Mission mission : missionRepository.findAll()) {
             String query = PLACE_QUERIES.get(mission.getPlaceName());
-            if (mission.isIndoor() || query == null || mission.hasKakaoQuery()) {
+            if (mission.isIndoor() || query == null || query.equals(mission.getKakaoQuery())) {
                 continue;
             }
-            mission.changeKakaoQuery(query); // run 이 @Transactional → 변경 감지로 저장
+            mission.changeKakaoQuery(query);
             updated++;
         }
         if (updated > 0) {
-            log.info("미션 카카오 검색어 {}개 채움", updated);
+            log.info("미션 카카오 검색어 {}개 맞춤", updated);
         }
     }
 
