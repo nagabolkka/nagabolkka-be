@@ -130,4 +130,14 @@ public class Mission extends BaseEntity {
     public void changeKakaoQuery(String kakaoQuery) {
         this.kakaoQuery = kakaoQuery;
     }
+
+    // 시드 : 지역 이름이 박힌 기본 장소 이름 정리 (기존 미션 포함)
+    public void changePlaceName(String placeName) {
+        this.placeName = placeName;
+    }
+
+    // 시드 : 특정 장소가 박힌 설명 정리 (기존 미션 포함)
+    public void changeDescription(String description) {
+        this.description = description;
+    }
 }
