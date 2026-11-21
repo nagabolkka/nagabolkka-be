@@ -6,7 +6,9 @@ import com.nagabolkka.backend.domain.notice.dto.NoticeUpdateRequest;
 import com.nagabolkka.backend.domain.notice.entity.Notice;
 import com.nagabolkka.backend.domain.notice.entity.NoticeStatus;
 import com.nagabolkka.backend.domain.notice.repository.NoticeRepository;
+import com.nagabolkka.backend.global.config.ClockConfig;
 import com.nagabolkka.backend.global.exception.ErrorCode;
+import com.nagabolkka.backend.global.push.PushMessage;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,6 +17,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -29,9 +34,12 @@ import static org.mockito.Mockito.never;
 @ExtendWith(MockitoExtension.class)
 class NoticeServiceTest {
 
+    private static final Clock CLOCK = Clock.fixed(
+            ZonedDateTime.of(2026, 11, 21, 14, 0, 0, 0, ClockConfig.KST).toInstant(), ClockConfig.KST);
+
     @Mock NoticeRepository noticeRepository;
 
-    @InjectMocks NoticeService noticeService;
+    @InjectMocks NoticeService noticeService; // Clock 은 null 로 들어감 → markPushed 테스트는 아래 service() 로
 
     private Notice notice(Long id, String title) {
         Notice notice = Notice.create(title, "내용");
@@ -114,5 +122,45 @@ class NoticeServiceTest {
         noticeService.delete(3L);
 
         then(noticeRepository).should().delete(notice);
+    }
+
+    // ───── 공지 알림 (서버 점검) ─────
+
+    private NoticeService service() {
+        return new NoticeService(noticeRepository, CLOCK);
+    }
+
+    @Test
+    @DisplayName("알림 보내기 → 보낸 시각 기록 · 🔧 제목 · 누르면 홈")
+    void markPushed() {
+        Notice notice = notice(3L, "서버 점검 안내");
+        given(noticeRepository.findById(3L)).willReturn(Optional.of(notice));
+
+        PushMessage message = service().markPushed(3L);
+
+        assertThat(notice.getPushedAt()).isEqualTo(LocalDateTime.of(2026, 11, 21, 14, 0));
+        assertThat(message).isEqualTo(new PushMessage("🔧 서버 점검 안내", "내용", "/"));
+        assertThat(NoticeItem.from(notice).pushedAt()).isEqualTo(LocalDateTime.of(2026, 11, 21, 14, 0));
+    }
+
+    @Test
+    @DisplayName("이미 보낸 공지 → 409 · 보낸 시각 그대로")
+    void markPushed_twice() {
+        Notice notice = notice(3L, "서버 점검 안내");
+        notice.markPushed(LocalDateTime.of(2026, 11, 20, 9, 0));
+        given(noticeRepository.findById(3L)).willReturn(Optional.of(notice));
+
+        assertThatThrownBy(() -> service().markPushed(3L))
+                .extracting("errorCode").isEqualTo(ErrorCode.NOTICE_ALREADY_PUSHED);
+        assertThat(notice.getPushedAt()).isEqualTo(LocalDateTime.of(2026, 11, 20, 9, 0));
+    }
+
+    @Test
+    @DisplayName("없는 공지 알림 → 404")
+    void markPushed_notFound() {
+        given(noticeRepository.findById(9L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service().markPushed(9L))
+                .extracting("errorCode").isEqualTo(ErrorCode.NOT_FOUND);
     }
 }
