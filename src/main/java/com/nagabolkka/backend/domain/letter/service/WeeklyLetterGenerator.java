@@ -17,6 +17,7 @@ import com.nagabolkka.backend.domain.user.repository.UserRepository;
 import com.nagabolkka.backend.global.ai.AiClient;
 import com.nagabolkka.backend.global.geo.GeoPoint;
 import com.nagabolkka.backend.domain.place.service.NearbyPlaceSyncer;
+import com.nagabolkka.backend.domain.push.service.PushNotifier;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -24,6 +25,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Clock;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
@@ -48,6 +50,7 @@ public class WeeklyLetterGenerator {
     private final LetterCenterFinder letterCenterFinder;
     private final NearbyPlaceSyncer nearbyPlaceSyncer;
     private final AiClient aiClient;
+    private final PushNotifier pushNotifier; // 편지 알림
     private final Clock clock;
 
     public record Result(LocalDate weekStart, int created, int skipped, int failed) {
@@ -61,6 +64,7 @@ public class WeeklyLetterGenerator {
         int created = 0;
         int skipped = 0;
         int failed = 0;
+        List<Long> createdUserIds = new ArrayList<>(); // 새로 만든 사람만 알림
         for (User user : targets) {
             try {
                 if (weeklyLetterRepository.existsByUserIdAndWeekStart(user.getId(), weekStart)) {
@@ -71,6 +75,7 @@ public class WeeklyLetterGenerator {
                 weeklyLetterRepository.save(WeeklyLetter.of(user, weekStart, stats, body(user, stats),
                         recommend(user, weekStart)));
                 created++;
+                createdUserIds.add(user.getId());
             } catch (DataIntegrityViolationException e) {
                 skipped++; // 동시에 돈 다른 실행이 먼저 저장 (유니크 제약)
             } catch (RuntimeException e) {
@@ -79,6 +84,7 @@ public class WeeklyLetterGenerator {
             }
         }
         log.info("주간 편지 {} : 생성 {} · 건너뜀 {} · 실패 {}", weekStart, created, skipped, failed);
+        pushNotifier.letterArrived(createdUserIds); // 이미 있던 편지 (건너뜀) 는 다시 안 보냄
         return new Result(weekStart, created, skipped, failed);
     }
 

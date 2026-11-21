@@ -11,9 +11,13 @@ import com.nagabolkka.backend.domain.notice.entity.NoticeStatus;
 import com.nagabolkka.backend.domain.notice.repository.NoticeRepository;
 import com.nagabolkka.backend.global.exception.CustomException;
 import com.nagabolkka.backend.global.exception.ErrorCode;
+import com.nagabolkka.backend.global.push.PushMessage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Clock;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -21,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class NoticeService {
 
     private final NoticeRepository noticeRepository;
+    private final Clock clock;
 
     // 앱 실행 시 팝업 (로그인 없이)
     public ActiveNoticeResponse getActive() {
@@ -61,6 +66,14 @@ public class NoticeService {
     @Transactional
     public void delete(Long noticeId) {
         noticeRepository.delete(find(noticeId));
+    }
+
+    // 알림 보낸 시각 기록 → 보낼 내용 돌려줌 (발송은 NoticePushService 가 트랜잭션 밖에서)
+    @Transactional
+    public PushMessage markPushed(Long noticeId) {
+        Notice notice = find(noticeId);
+        notice.markPushed(LocalDateTime.now(clock));
+        return PushMessage.notice(notice.getTitle(), notice.getContent());
     }
 
     private Notice find(Long noticeId) {

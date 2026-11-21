@@ -36,3 +36,8 @@ crypto:
   # 기본값 없음 → 서버 .env 에 없으면 앱이 뜨지 않는다
   hash-secret: ${HASH_SECRET}
   aes-key: ${AES_KEY}
+
+push:
+  firebase-credentials: ${FIREBASE_CREDENTIALS_BASE64:}   # 서비스 계정 JSON (base64 한 줄)
+  app-url: ${APP_URL:http://localhost:5173}                # 알림 누르면 열 주소의 앞부분 (운영 https://nagabolkka.vercel.app)
+  quest-cron: "0 0 9 * * *"                                # 매일 09:00 KST

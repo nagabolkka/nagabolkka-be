@@ -9,6 +9,7 @@ import com.nagabolkka.backend.domain.place.entity.Place;
 import com.nagabolkka.backend.domain.place.entity.PlaceCategory;
 import com.nagabolkka.backend.domain.place.repository.PlaceRepository;
 import com.nagabolkka.backend.domain.place.service.NearbyPlaceSyncer;
+import com.nagabolkka.backend.domain.push.service.PushNotifier;
 import com.nagabolkka.backend.domain.quest.entity.QuestStatus;
 import com.nagabolkka.backend.domain.quest.repository.DailyQuestRepository;
 import com.nagabolkka.backend.domain.quest.repository.QuestRecordRepository;
@@ -70,6 +71,7 @@ class WeeklyLetterGeneratorTest {
     @Mock AiClient aiClient;
     @Mock LetterCenterFinder letterCenterFinder;
     @Mock NearbyPlaceSyncer nearbyPlaceSyncer;
+    @Mock PushNotifier pushNotifier;
 
     WeeklyLetterGenerator generator;
     District seongbuk;
@@ -79,7 +81,7 @@ class WeeklyLetterGeneratorTest {
     void setUp() {
         generator = new WeeklyLetterGenerator(userRepository, weeklyLetterRepository, dailyQuestRepository,
                 questRecordRepository, pieceAcquisitionRepository, userRegionRepository, placeRepository,
-                letterCenterFinder, nearbyPlaceSyncer, aiClient, CLOCK);
+                letterCenterFinder, nearbyPlaceSyncer, aiClient, pushNotifier, CLOCK);
         seongbuk = District.of("성북구", new BigDecimal("37.5894"), new BigDecimal("127.0167"), 61, 127);
         ReflectionTestUtils.setField(seongbuk, "id", 10L);
         stage2 = Region.of(2, "바람의 숲", "문 앞", "바람의 조각", "#9DD49A", "a.png", "b.png");
@@ -149,6 +151,7 @@ class WeeklyLetterGeneratorTest {
         then(aiClient).should().weeklyLetter(request.capture());
         assertThat(request.getValue()).isEqualTo(
                 new AiClient.LetterRequest("윤지", 3, 1, 8, 6, "바람의 숲", 40, 3.5));
+        then(pushNotifier).should().letterArrived(List.of(1L)); // 새로 만든 사람에게 알림
     }
 
     @Test
@@ -192,6 +195,7 @@ class WeeklyLetterGeneratorTest {
         assertThat(result.skipped()).isEqualTo(1);
         then(weeklyLetterRepository).should(never()).save(any());
         then(aiClient).should(never()).weeklyLetter(any());
+        then(pushNotifier).should().letterArrived(List.of()); // 이미 있던 편지 → 아무에게도 안 감
     }
 
     @Test
@@ -221,6 +225,7 @@ class WeeklyLetterGeneratorTest {
 
         assertThat(result).isEqualTo(new WeeklyLetterGenerator.Result(WEEK_START, 1, 0, 1));
         then(weeklyLetterRepository).should(times(1)).save(any());
+        then(pushNotifier).should().letterArrived(List.of(2L)); // 실패한 1번은 빼고
     }
 
     @Test
