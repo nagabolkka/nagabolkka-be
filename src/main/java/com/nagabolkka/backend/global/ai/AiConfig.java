@@ -25,6 +25,12 @@ public class AiConfig {
         return build(props, props.letterTimeoutOrDefault());
     }
 
+    // 연습 음성 → 글자 : 10초 (녹음 파일 업로드 + 음성 인식)
+    @Bean
+    RestClient aiSttRestClient(AiProperties props) {
+        return build(props, props.sttTimeoutOrDefault());
+    }
+
     private static RestClient build(AiProperties props, Duration readTimeout) {
         HttpClient http = HttpClient.newBuilder()
                 .version(HttpClient.Version.HTTP_1_1) // uvicorn 은 HTTP/2 업그레이드 미지원 → 본문이 사라져 422
