@@ -1,6 +1,8 @@
 package com.nagabolkka.backend.domain.notice.entity;
 
 import com.nagabolkka.backend.global.common.BaseEntity;
+import com.nagabolkka.backend.global.exception.CustomException;
+import com.nagabolkka.backend.global.exception.ErrorCode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -12,6 +14,8 @@ import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
 
 // 공지 — created_by = 등록한 관리자 (Auditing) · "오늘 하루 보지 않기" 는 프론트 localStorage
 @Getter
@@ -37,6 +41,9 @@ public class Notice extends BaseEntity {
     @Column(nullable = false, length = 10)
     private NoticeStatus status;
 
+    // 알림으로 보낸 시각 (null = 아직) · 공지당 한 번만
+    private LocalDateTime pushedAt;
+
     // 등록 → 바로 게시 중
     public static Notice create(String title, String content) {
         Notice notice = new Notice();
@@ -58,5 +65,13 @@ public class Notice extends BaseEntity {
 
     public void changeStatus(NoticeStatus status) {
         this.status = status;
+    }
+
+    // 두 번째 요청은 409
+    public void markPushed(LocalDateTime now) {
+        if (pushedAt != null) {
+            throw new CustomException(ErrorCode.NOTICE_ALREADY_PUSHED);
+        }
+        this.pushedAt = now;
     }
 }

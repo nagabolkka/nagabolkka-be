@@ -54,3 +54,7 @@ ai:
   internal-key: ${AI_INTERNAL_KEY:local-dev-key}
   timeout: 5s
   letter-timeout: 20s
+push:
+  firebase-credentials: ${FIREBASE_CREDENTIALS_BASE64:}
+  app-url: ${APP_URL:http://localhost:5173}
+  quest-cron: "0 0 9 * * *"
