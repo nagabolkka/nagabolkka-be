@@ -1,6 +1,12 @@
 package com.nagabolkka.backend.global.ai;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
@@ -17,11 +23,14 @@ public class AiClient {
 
     private final RestClient aiRestClient;
     private final RestClient aiLetterRestClient;
+    private final RestClient aiSttRestClient;
 
     public AiClient(@Qualifier("aiRestClient") RestClient aiRestClient,
-                    @Qualifier("aiLetterRestClient") RestClient aiLetterRestClient) {
+                    @Qualifier("aiLetterRestClient") RestClient aiLetterRestClient,
+                    @Qualifier("aiSttRestClient") RestClient aiSttRestClient) {
         this.aiRestClient = aiRestClient;
         this.aiLetterRestClient = aiLetterRestClient;
+        this.aiSttRestClient = aiSttRestClient;
     }
     public record CrisisResult(boolean crisis, String method, String ruleId, String category) {
     }
@@ -64,6 +73,10 @@ public class AiClient {
     public record LetterResult(String body, boolean fallback) {
     }
 
+    // 연습 음성 → 글자 (못 알아들었거나 OpenAI 실패면 text null · fallback true)
+    public record TranscribeResult(String text, boolean fallback) {
+    }
+
     // 회고 · 연습 메시지 위기 검사
     public Optional<CrisisResult> checkCrisis(String text) {
         return call(() -> post("/ai/crisis/check", Map.of("text", text), CrisisResult.class));
@@ -97,6 +110,26 @@ public class AiClient {
     public Optional<LetterResult> weeklyLetter(LetterRequest request) {
         return call(() -> aiLetterRestClient.post().uri("/ai/letter/weekly").body(request).retrieve()
                 .body(LetterResult.class));
+    }
+
+    // 🆕 연습 음성 → 글자 (녹음 파일은 저장 · 로그 X · 10초)
+    public Optional<TranscribeResult> transcribe(byte[] audio, String filename, String contentType) {
+        HttpHeaders partHeaders = new HttpHeaders();
+        partHeaders.setContentType(MediaType.parseMediaType(contentType));
+        ByteArrayResource file = new ByteArrayResource(audio) {
+            @Override
+            public String getFilename() {
+                return filename; // multipart 파일 이름 (없으면 FastAPI 가 파일로 인식 못 함)
+            }
+        };
+        MultiValueMap<String, Object> form = new LinkedMultiValueMap<>();
+        form.add("audio", new HttpEntity<>(file, partHeaders));
+        return call(() -> aiSttRestClient.post()
+                .uri("/ai/practice/transcribe")
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .body(form)
+                .retrieve()
+                .body(TranscribeResult.class));
     }
 
     private <T> T post(String uri, Object body, Class<T> type) {

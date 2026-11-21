@@ -5,9 +5,11 @@ import com.nagabolkka.backend.domain.practice.dto.FinishResponse;
 import com.nagabolkka.backend.domain.practice.dto.ScenariosResponse;
 import com.nagabolkka.backend.domain.practice.dto.StartPracticeRequest;
 import com.nagabolkka.backend.domain.practice.dto.StartPracticeResponse;
+import com.nagabolkka.backend.domain.practice.dto.TranscribeResponse;
 import com.nagabolkka.backend.domain.practice.dto.TurnRequest;
 import com.nagabolkka.backend.domain.practice.dto.TurnResponse;
 import com.nagabolkka.backend.domain.practice.service.PracticeService;
+import com.nagabolkka.backend.domain.practice.service.PracticeVoiceService;
 import com.nagabolkka.backend.global.exception.ErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -19,13 +21,16 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @Tag(name = "연습실", description = "AI 상대역과 3턴 대화 연습 · 피드백 · 연습 조각")
 @RestController
@@ -38,6 +43,7 @@ public class PracticeController {
     private static final String INVALID_EX = "{\"code\":\"INVALID_INPUT\",\"message\":\"입력값을 다시 확인해 주세요\"}";
 
     private final PracticeService practiceService;
+    private final PracticeVoiceService practiceVoiceService;
 
     @Operation(summary = "연습 시나리오",
             description = "시나리오 3개와 오늘 남은 연습 횟수입니다. (하루 3회 · 시작 기준 · KST 00:00 초기화)")
@@ -119,5 +125,31 @@ public class PracticeController {
                                  @Parameter(description = "세션 id", example = "55") @PathVariable Long sessionId,
                                  @Valid @RequestBody FinishRequest request) {
         return practiceService.finish(userId, sessionId, request);
+    }
+
+    // 음성 → 글자
+    @Operation(summary = "연습 음성 → 글자",
+            description = "녹음 파일 (audio · 2MB · 30초 이하)을 글자로 바꿔 돌려줍니다. 대화 턴은 쓰지 않습니다. "
+                    + "(보낼 때는 기존 연습 대화 API) 녹음 파일은 저장하지 않습니다. \n\n"
+                    + "형식 : audio/webm · audio/mp4 · audio/mpeg · audio/ogg · audio/wav \n\n"
+                    + "못 알아들었거나 AI 가 응답하지 않으면 {\"text\": null} → 다시 말하기 · 직접 입력")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "글자 (못 알아들으면 null)",
+                    content = @Content(schema = @Schema(implementation = TranscribeResponse.class))),
+            @ApiResponse(responseCode = "400", description = "파일 없음 · 빈 파일 · 2MB 초과 · 오디오 형식 아님",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class), examples =
+                    @ExampleObject(name = "INVALID_INPUT", value = INVALID_EX))),
+            @ApiResponse(responseCode = "404", description = "없는 세션 · 다른 사람 세션",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class), examples =
+                    @ExampleObject(name = "NOT_FOUND", value = NOT_FOUND_EX))),
+            @ApiResponse(responseCode = "409", description = "끝났거나 멈춘 세션",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class), examples =
+                    @ExampleObject(name = "PRACTICE_SESSION_CLOSED", value = CLOSED_EX)))
+    })
+    @PostMapping(value = "/sessions/{sessionId}/transcribe", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public TranscribeResponse transcribe(@Parameter(hidden = true) @AuthenticationPrincipal Long userId,
+                                         @Parameter(description = "세션 id", example = "55") @PathVariable Long sessionId,
+                                         @RequestPart("audio") MultipartFile audio) {
+        return practiceVoiceService.transcribe(userId, sessionId, audio);
     }
 }

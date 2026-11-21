@@ -23,6 +23,11 @@ spring:
       hibernate:
         format_sql: true
 
+  servlet:
+    multipart:
+      max-file-size: 2MB # 기본 1MB -> 30초 녹음 여유 있게
+      max-request-size: 2MB
+
 kakao:
   rest-api-key: ${KAKAO_REST_API_KEY:}
   client-secret: ${KAKAO_CLIENT_SECRET:}
@@ -54,6 +59,7 @@ ai:
   internal-key: ${AI_INTERNAL_KEY:local-dev-key}
   timeout: 5s
   letter-timeout: 20s
+  stt-timeout: 10s
 push:
   firebase-credentials: ${FIREBASE_CREDENTIALS_BASE64:}
   app-url: ${APP_URL:http://localhost:5173}
