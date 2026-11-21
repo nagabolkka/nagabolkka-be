@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @Slf4j
@@ -22,13 +24,15 @@ public class GlobalExceptionHandler {
         return toResponse(e.getErrorCode());
     }
 
-    /** @Valid 실패 · JSON 형식 오류 · 쿼리 누락 · 타입 불일치 → 400 INVALID_INPUT */
+    /** @Valid 실패 · JSON 형식 오류 · 쿼리 누락 · 타입 불일치 · 파일 오류 → 400 INVALID_INPUT (5xx 면 프론트가 점검 화면) */
     @ExceptionHandler({
             MethodArgumentNotValidException.class,
             HandlerMethodValidationException.class,
             HttpMessageNotReadableException.class,
             MissingServletRequestParameterException.class,
-            MethodArgumentTypeMismatchException.class
+            MethodArgumentTypeMismatchException.class,
+            MissingServletRequestPartException.class,
+            MultipartException.class
     })
     public ResponseEntity<ErrorResponse> handleInvalidInput(Exception e) {
         log.debug("잘못된 입력: {}", e.getMessage());

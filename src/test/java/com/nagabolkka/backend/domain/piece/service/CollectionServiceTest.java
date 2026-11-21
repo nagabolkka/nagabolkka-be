@@ -110,6 +110,7 @@ class CollectionServiceTest {
 
         RegionPieces stage1 = response.regions().get(0);
         assertThat(stage1.restoration()).isEqualTo(40);
+        assertThat(stage1.status()).isEqualTo(RegionStatus.ACTIVE);
         assertThat(stage1.slots()).extracting(Slot::slotNo).containsExactly(1, 2, 5);
 
         Slot sun = stage1.slots().get(0);
@@ -127,6 +128,8 @@ class CollectionServiceTest {
         assertThat(morning.count()).isZero();
 
         assertThat(response.regions().get(1).restoration()).isZero();
+        assertThat(response.regions().get(1).status()).isEqualTo(RegionStatus.LOCKED); // 아직 안 연 챕터도 칸 · 힌트는 내려줌
+        assertThat(response.regions().get(1).slots()).extracting(Slot::hint).containsExactly("첫걸음 조각 힌트");
         assertThat(response.bonusPieces()).isEmpty();
     }
 

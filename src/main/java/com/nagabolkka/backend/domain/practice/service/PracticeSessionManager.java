@@ -8,6 +8,7 @@ import com.nagabolkka.backend.domain.practice.dto.FinishResponse.FollowMission;
 import com.nagabolkka.backend.domain.practice.dto.FinishResponse.PieceItem;
 import com.nagabolkka.backend.domain.practice.entity.PracticeScenario;
 import com.nagabolkka.backend.domain.practice.entity.PracticeSession;
+import com.nagabolkka.backend.domain.practice.entity.PracticeStatus;
 import com.nagabolkka.backend.domain.practice.repository.PracticeScenarioRepository;
 import com.nagabolkka.backend.domain.practice.repository.PracticeSessionRepository;
 import com.nagabolkka.backend.domain.region.entity.Region;
@@ -106,6 +107,17 @@ public class PracticeSessionManager {
         Mission follow = scenario.getFollowMission();
         return new Finished(scenario.getCode(), piece,
                 follow == null ? null : new FollowMission(follow.getId(), follow.getTitle()));
+    }
+
+    // 음성 → 글자 : 내 세션 · 대화 중일 때만 (턴은 쓰지 않음 · 잠금 없이 확인만)
+    @Transactional(readOnly = true)
+    public void checkOpen(Long userId, Long sessionId) {
+        PracticeSession session = sessionRepository.findById(sessionId)
+                .filter(s -> s.isOwnedBy(userId))
+                .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND));
+        if (session.getStatus() != PracticeStatus.IN_PROGRESS) {
+            throw new CustomException(ErrorCode.PRACTICE_SESSION_CLOSED);
+        }
     }
 
     @Transactional
