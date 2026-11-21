@@ -4,6 +4,7 @@ import com.nagabolkka.backend.domain.piece.entity.Piece;
 import com.nagabolkka.backend.domain.piece.entity.PieceType;
 import com.nagabolkka.backend.domain.piece.repository.PieceCount;
 import com.nagabolkka.backend.domain.region.entity.Region;
+import com.nagabolkka.backend.domain.region.entity.RegionStatus;
 import com.nagabolkka.backend.domain.region.entity.UserRegion;
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -32,12 +33,15 @@ public record CollectionResponse(
             @Schema(example = "#E8C06A") String color,
             @Schema(description = "지역 맑음 이미지 (도감은 비 버전 안 씀)", example = "/images/regions/1-start-room.png") String imageUrl,
             @Schema(description = "복원도 0 ~ 100 (홈과 같은 값)", example = "40") int restoration,
+            @Schema(description = "ACTIVE 지금 머무는 곳 · COMPLETED 다 복원하고 넘어온 곳 · PASSED 시작 체크로 건너뛴 곳 · LOCKED 아직 안 열림",
+                    example = "ACTIVE") RegionStatus status, // 도감 챕터 구분
             @Schema(description = "칸 1 ~ 5") List<Slot> slots
     ) {
         public static RegionPieces of(UserRegion userRegion, List<Slot> slots) {
             Region region = userRegion.getRegion();
             return new RegionPieces(region.getStageNo(), region.getName(), region.getPieceFamily(),
-                    region.getColor(), region.getImageUrl(), userRegion.getRestoration(), slots);
+                    region.getColor(), region.getImageUrl(), userRegion.getRestoration(),
+                    userRegion.getStatus(), slots);
         }
     }
 
