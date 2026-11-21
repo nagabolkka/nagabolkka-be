@@ -2,8 +2,10 @@ package com.nagabolkka.backend.domain.notice.controller;
 
 import com.nagabolkka.backend.domain.notice.dto.NoticeCreateRequest;
 import com.nagabolkka.backend.domain.notice.dto.NoticeItem;
+import com.nagabolkka.backend.domain.notice.dto.NoticePushResponse;
 import com.nagabolkka.backend.domain.notice.dto.NoticeUpdateRequest;
 import com.nagabolkka.backend.domain.notice.dto.NoticesResponse;
+import com.nagabolkka.backend.domain.notice.service.NoticePushService;
 import com.nagabolkka.backend.domain.notice.service.NoticeService;
 import com.nagabolkka.backend.global.exception.ErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -43,8 +45,10 @@ public class AdminNoticeController {
 
     private static final String INVALID = "{\"code\":\"INVALID_INPUT\",\"message\":\"입력값을 다시 확인해 주세요\"}";
     private static final String NOT_FOUND = "{\"code\":\"NOT_FOUND\",\"message\":\"찾을 수 없어요\"}";
+    private static final String ALREADY_PUSHED = "{\"code\":\"NOTICE_ALREADY_PUSHED\",\"message\":\"이미 알림을 보낸 공지예요\"}";
 
     private final NoticeService noticeService;
+    private final NoticePushService noticePushService; // 🆕
 
     @Operation(summary = "공지 목록", description = "전체 공지 (최근 등록 순)")
     @ApiResponse(responseCode = "200", description = "조회 성공",
@@ -54,7 +58,7 @@ public class AdminNoticeController {
         return noticeService.getAll();
     }
 
-    @Operation(summary = "공지 등록", description = "등록하면 바로 게시 중(ACTIVE)입니다. 제목 60자 · 내용 500자.")
+    @Operation(summary = "공지 등록", description = "등록하면 바로 게시 중 (ACTIVE) 입니다. 제목 60자 · 내용 500자")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "등록",
                     content = @Content(schema = @Schema(implementation = NoticeItem.class))),
@@ -70,7 +74,7 @@ public class AdminNoticeController {
 
     @Operation(summary = "공지 수정 · 게시 중지 / 다시 게시",
             description = "보낸 필드만 바꿉니다. {\"status\":\"STOPPED\"} 또는 {\"title\":\"...\",\"content\":\"...\"}. "
-                    + "아무것도 없거나 빈 제목 · 내용은 400.")
+                    + "아무것도 없거나 빈 제목 · 내용은 400")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "수정",
                     content = @Content(schema = @Schema(implementation = NoticeItem.class))),
@@ -98,5 +102,24 @@ public class AdminNoticeController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@Parameter(description = "공지 id", example = "3") @PathVariable Long noticeId) {
         noticeService.delete(noticeId);
+    }
+
+    // 서버 점검 등 공지를 알림으로
+    @Operation(summary = "공지를 알림으로 보내기 (서버 점검 등)",
+            description = "알림을 켠 모든 일반 사용자에게 FCM 으로 보냅니다. 공지 당 한 번만\n"
+                    + "누르면 홈 (공지 팝업) 이 열립니다. Firebase 키가 없는 환경은 sent 0")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "발송 결과",
+                    content = @Content(schema = @Schema(implementation = NoticePushResponse.class))),
+            @ApiResponse(responseCode = "404", description = "없는 공지",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class), examples =
+                    @ExampleObject(name = "NOT_FOUND", value = NOT_FOUND))),
+            @ApiResponse(responseCode = "409", description = "이미 알림을 보낸 공지",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class), examples =
+                    @ExampleObject(name = "NOTICE_ALREADY_PUSHED", value = ALREADY_PUSHED)))
+    })
+    @PostMapping("/{noticeId}/push")
+    public NoticePushResponse push(@Parameter(description = "공지 id", example = "3") @PathVariable Long noticeId) {
+        return noticePushService.push(noticeId);
     }
 }

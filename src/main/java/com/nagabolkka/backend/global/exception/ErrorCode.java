@@ -38,6 +38,7 @@ public enum ErrorCode {
     PRACTICE_DAILY_LIMIT(HttpStatus.CONFLICT, "오늘 연습은 여기까지예요"),
     PRACTICE_TURN_LIMIT(HttpStatus.CONFLICT, "대화 횟수를 다 썼어요"),
     PRACTICE_SESSION_CLOSED(HttpStatus.CONFLICT, "이미 끝난 연습이에요"),
+    NOTICE_ALREADY_PUSHED(HttpStatus.CONFLICT, "이미 알림을 보낸 공지예요"),
 
     // 500
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "잠시 후 다시 시도해 주세요");
