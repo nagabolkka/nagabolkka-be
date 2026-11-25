@@ -12,7 +12,7 @@ public record StartCheckResponse(
         @Schema(description = "출발 지역")
         RegionInfo region,
 
-        @Schema(description = "고른 목표")
+        @Schema(description = "고른 목표 (목표 없이 시작하면 null)", nullable = true)
         GoalInfo goal
 ) {
 
@@ -32,7 +32,7 @@ public record StartCheckResponse(
             @Schema(example = "모임") String name
     ) {
         static GoalInfo from(Goal goal) {
-            return new GoalInfo(goal.getId(), goal.getName());
+            return goal == null ? null : new GoalInfo(goal.getId(), goal.getName());
         }
     }
 
