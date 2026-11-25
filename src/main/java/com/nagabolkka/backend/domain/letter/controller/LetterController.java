@@ -32,7 +32,7 @@ public class LetterController {
     private final LocationLogService locationLogService;
 
     @Operation(summary = "가장 최근 편지",
-            description = "매주 월요일 03:00 (KST) 에 지난주 (월 ~ 일) 편지가 만들어집니다.\n\n"
+            description = "매주 월요일 10:00 (KST) 에 지난주 (월 ~ 일) 편지가 만들어집니다.\n\n"
                     + "- 편지가 아직 없으면 **204** (본문 없음)\n"
                     + "- `body` 에는 인사 · 서명이 없습니다 → `nickname` 으로 「OO에게,」 를 그려 주세요.\n"
                     + "- `stats.outingCount` · `splitCount` = 그 주 / `pieceCount` · `collection` = 편지 만들 때까지 누적\n"

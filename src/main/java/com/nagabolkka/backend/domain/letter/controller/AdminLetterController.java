@@ -28,7 +28,7 @@ public class AdminLetterController {
     private final Clock clock;
 
     @Operation(summary = "주간 편지 지금 만들기",
-            description = "월요일 03:00 배치를 지금 실행합니다. 이미 그 주 편지가 있는 사용자는 건너뜁니다.\n\n"
+            description = "월요일 10:00 배치를 지금 실행합니다. 이미 그 주 편지가 있는 사용자는 건너뜁니다.\n\n"
                     + "- `weekStart` 없음 → 지난주\n"
                     + "- `weekStart` = 그 주 **월요일** (yyyy-MM-dd) 이번 주로 미리 만들어 보기 · 배치 실패 후 다시 만들기에 사용\n"
                     + "- 사용자마다 AI 를 부르므로 사용자가 많으면 오래 걸릴 수 있습니다.")
