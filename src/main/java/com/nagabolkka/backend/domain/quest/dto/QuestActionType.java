@@ -7,5 +7,7 @@ public enum QuestActionType {
     CHANGE,
     SKIP,
     REVISIT,
-    PRACTICE_MISSION
+    PRACTICE_MISSION,
+    EASIER, // 난이도 한 단계 쉽게 (하루 1번)
+    HARDER  // 난이도 한 단계 어렵게 (하루 1번)
 }

@@ -8,7 +8,8 @@ import jakarta.validation.constraints.NotNull;
 public record QuestActionRequest(
 
         @Schema(description = "ACCEPT 수락 · SPLIT 쪼개기 · CHANGE 바꾸기 · SKIP 오늘은 쉬기 · "
-                + "REVISIT 지나온 계단 미션 받기 · PRACTICE_MISSION 연습 후 실제 미션 담기",
+                + "REVISIT 지나온 계단 미션 받기 · PRACTICE_MISSION 연습 후 실제 미션 담기 · "
+                + "EASIER 난이도 한 단계 쉽게 · HARDER 난이도 한 단계 어렵게",
                 example = "ACCEPT")
         @NotNull
         QuestActionType type,
