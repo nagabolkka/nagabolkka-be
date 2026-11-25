@@ -40,3 +40,7 @@ out/
 .env
 .env.*
 !.env.example
+
+### Deploy ###
+# GitHub Actions 가 서버로 보내는 실행 파일 (git 에 올리지 않음)
+/app.jar

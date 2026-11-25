@@ -1,24 +1,11 @@
-# ---------- 1단계: 빌드 (JDK로 jar 만들기) ----------
-FROM eclipse-temurin:21-jdk AS build
-WORKDIR /workspace
-
-# 서버 메모리(1GB)가 작아서 Gradle이 쓰는 메모리를 제한
-ENV GRADLE_OPTS="-Xmx512m -Dorg.gradle.daemon=false"
-
-# 의존성 파일 먼저 복사 → 코드만 바뀌면 의존성 다운로드를 캐시로 건너뜀
-COPY gradlew settings.gradle build.gradle ./
-COPY gradle gradle
-RUN chmod +x gradlew && ./gradlew dependencies --no-daemon > /dev/null 2>&1 || true
-
-COPY src src
-RUN ./gradlew bootJar -x test --no-daemon
-
-# ---------- 2단계: 실행 (JRE만 담아서 가볍게) ----------
+# 실행만 하는 이미지 (jar 는 GitHub Actions 에서 빌드해서 서버로 보냄)
+# 서버(RAM 1GB)에서 Gradle 빌드를 하면 다른 컨테이너가 스왑으로 밀려나서 빌드를 서버 밖으로 옮김
 FROM eclipse-temurin:21-jre
 WORKDIR /app
 ENV TZ=Asia/Seoul
 
-COPY --from=build /workspace/build/libs/*.jar app.jar
+# 레포 루트의 app.jar (로컬에서 이미지를 만들 땐 ./gradlew bootJar → cp build/libs/*.jar app.jar)
+COPY app.jar app.jar
 
 EXPOSE 8080
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
