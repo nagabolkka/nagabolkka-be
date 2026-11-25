@@ -7,6 +7,7 @@ import com.nagabolkka.backend.domain.mission.repository.MissionStepRepository;
 import com.nagabolkka.backend.domain.piece.entity.PieceType;
 import com.nagabolkka.backend.domain.piece.repository.PieceAcquisitionRepository;
 import com.nagabolkka.backend.domain.quest.dto.QuestActionRequest;
+import com.nagabolkka.backend.domain.quest.dto.QuestActionType;
 import com.nagabolkka.backend.domain.quest.dto.TodayQuestResponse;
 import com.nagabolkka.backend.domain.quest.entity.DailyQuest;
 import com.nagabolkka.backend.domain.quest.repository.DailyQuestRepository;
@@ -15,6 +16,7 @@ import com.nagabolkka.backend.domain.region.entity.UserRegion;
 import com.nagabolkka.backend.domain.region.repository.UserRegionRepository;
 import com.nagabolkka.backend.domain.user.entity.User;
 import com.nagabolkka.backend.domain.user.repository.UserRepository;
+import com.nagabolkka.backend.global.common.Difficulty;
 import com.nagabolkka.backend.global.exception.CustomException;
 import com.nagabolkka.backend.global.exception.ErrorCode;
 import com.nagabolkka.backend.global.geo.GeoPoint;
@@ -62,7 +64,7 @@ public class QuestService {
         return toResponse(quest);
     }
 
-    // 오늘 퀘스트 동작 : 수락 · 쪼개기 · 바꾸기 · 오늘은 쉬기 · 지나온 계단 미션 받기
+    // 오늘 퀘스트 동작 : 수락 · 쪼개기 · 바꾸기 · 오늘은 쉬기 · 지나온 계단 미션 받기 · 난이도 바꾸기
     // (장소 다시 찾기 X → 버튼 누르는 순간 장소가 바뀌지 않게)
     @Transactional
     public TodayQuestResponse act(Long userId, QuestActionRequest request, GeoPoint location) {
@@ -102,6 +104,24 @@ public class QuestService {
                     quest.replaceWithPractice(follow, user.getCurrentRegion()); // 끝난 퀘스트 → 409
                     questPlaceFinder.fill(quest, originOf(user, location)); // 첫 방문 미션 → 근처 도서관
                 }
+            }
+
+            // 난이도 바꾸기 : 오늘 퀘스트만 (내일 자동 난이도 users.difficulty 는 그대로)
+            case EASIER, HARDER -> {
+                quest.checkDifficultyChangeable(); // 끝남 · 수락 뒤 · 담기 · 연습 미션 · 1번 다 씀 → 409 (조회 전에)
+                Difficulty current = quest.getMission().getDifficulty();
+                Difficulty target = request.type() == QuestActionType.HARDER
+                        ? DifficultyPolicy.harder(current)
+                        : DifficultyPolicy.easier(current);
+                if (target == current) { // 이미 가장 쉬움 · 가장 어려움 (빗소리 미션 = 쉬움)
+                    throw new CustomException(ErrorCode.QUEST_DIFFICULTY_LOCKED);
+                }
+                List<Mission> candidates = missionRepository.findActiveByRegionIds(List.of(quest.getRegion().getId()));
+                List<Long> recentMissionIds = dailyQuestRepository.findRecentMissionIds(user.getId(),
+                        LocalDate.now(clock), PageRequest.of(0, QuestAssigner.RECENT_DAYS));
+                quest.changeDifficulty(questAssigner.pickDifficulty(quest.getRegion().getStageNo(), target,
+                        candidates, recentMissionIds));
+                questPlaceFinder.fill(quest, originOf(user, location)); // 바깥 미션이면 근처 실제 장소
             }
         }
 

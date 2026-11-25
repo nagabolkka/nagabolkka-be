@@ -55,14 +55,16 @@ public record HomeResponse(
             @Schema(description = "실내 0 · 실제 장소면 거리 · 모르면 null", example = "0", nullable = true) Integer distanceM,
             @Schema(example = "3") int estMinutes,
             @Schema(description = "진행 중이면 쪼개기 화면 / 진행 화면 분기", example = "false") boolean isSplit,
-            Reward reward
+            Reward reward,
+            @Schema(description = "오늘 남은 난이도 바꾸기 횟수 (하루 1번)", example = "1") int difficultyChangeRemaining
     ) {
         static TodayQuest from(DailyQuest quest) {
             Mission mission = quest.getMission();
             return new TodayQuest(quest.getId(), quest.getStatus(), quest.getSource(),
                     quest.getRegion().getStageNo(), quest.getTitle(), mission.getDifficulty(),
                     quest.getPlaceName(), quest.getDistanceM(), mission.getEstMinutes(), quest.isSplit(),
-                    new Reward(mission.getRewardPiece().getId(), mission.getRewardPiece().getName()));
+                    new Reward(mission.getRewardPiece().getId(), mission.getRewardPiece().getName()),
+                    quest.getDifficultyChangeRemaining());
         }
     }
 
