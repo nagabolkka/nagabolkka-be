@@ -226,4 +226,31 @@ class GoalServiceTest {
                 .extracting("errorCode").isEqualTo(ErrorCode.NOT_FOUND);
         then(userGoalStepRepository).should(never()).save(any());
     }
+
+    @Test
+    @DisplayName("목표 없이 시작한 사용자 → 내 목표 404 NOT_FOUND (프론트 빈 상태)")
+    void getMyGoal_noGoal() {
+        User noGoal = User.createKakaoUser("목표없음");
+        Region stage1 = Region.of(1, "시작의 방", "집 안", "빛의 조각", "#E8C06A", "a.png", "b.png");
+        District seongbuk = District.of("성북구", new BigDecimal("37.5894"), new BigDecimal("127.0167"), 61, 127);
+        noGoal.completeOnboarding(2, stage1, null, seongbuk);
+        given(userRepository.findById(2L)).willReturn(Optional.of(noGoal));
+
+        assertThatThrownBy(() -> service.getMyGoal(2L))
+                .extracting("errorCode").isEqualTo(ErrorCode.NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("목표 없이 시작한 사용자 → 단계 체크 404 NOT_FOUND · 저장 안 함")
+    void check_noGoal() {
+        User noGoal = User.createKakaoUser("목표없음");
+        Region stage1 = Region.of(1, "시작의 방", "집 안", "빛의 조각", "#E8C06A", "a.png", "b.png");
+        District seongbuk = District.of("성북구", new BigDecimal("37.5894"), new BigDecimal("127.0167"), 61, 127);
+        noGoal.completeOnboarding(2, stage1, null, seongbuk);
+        given(userRepository.findByIdForUpdate(2L)).willReturn(Optional.of(noGoal));
+
+        assertThatThrownBy(() -> service.checkStep(2L, 11L, true))
+                .extracting("errorCode").isEqualTo(ErrorCode.NOT_FOUND);
+        then(userGoalStepRepository).should(never()).save(any());
+    }
 }
