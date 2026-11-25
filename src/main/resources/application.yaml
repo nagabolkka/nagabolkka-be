@@ -64,3 +64,5 @@ push:
   firebase-credentials: ${FIREBASE_CREDENTIALS_BASE64:}
   app-url: ${APP_URL:http://localhost:5173}
   quest-cron: "0 0 9 * * *"
+letter:
+  weekly-cron: "0 0 10 * * MON"   # 매주 월 10:00 KST (편지 생성 → 바로 알림)

@@ -19,7 +19,7 @@ public class AiConfig {
         return build(props, props.timeout());
     }
 
-    // 주간 편지 배치 : 20초 (새벽 · 아무도 기다리지 않음)
+    // 주간 편지 배치 : 20초 (월 10:00 배치 · 화면에서 기다리는 사람 없음)
     @Bean
     RestClient aiLetterRestClient(AiProperties props) {
         return build(props, props.letterTimeoutOrDefault());
