@@ -1,61 +1,26 @@
 package com.nagabolkka.backend.domain.letter.service;
 
 import com.nagabolkka.backend.domain.letter.dto.LetterResponse;
-import com.nagabolkka.backend.domain.letter.dto.LetterResponse.PlaceItem;
-import com.nagabolkka.backend.domain.letter.entity.WeeklyLetter;
-import com.nagabolkka.backend.domain.letter.repository.WeeklyLetterRepository;
-import com.nagabolkka.backend.domain.place.entity.Place;
-import com.nagabolkka.backend.domain.place.repository.PlaceRepository;
-import com.nagabolkka.backend.domain.user.entity.User;
-import com.nagabolkka.backend.domain.user.repository.UserRepository;
-import com.nagabolkka.backend.global.exception.CustomException;
-import com.nagabolkka.backend.global.exception.ErrorCode;
+import com.nagabolkka.backend.domain.place.service.NearbyPlaceSyncer;
 import com.nagabolkka.backend.global.geo.GeoPoint;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Clock;
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
+// 트랜잭션 없음 : 카카오 검색 (처음 가는 칸만) 동안 DB 연결을 잡지 않도록 · 조회는 LetterReader
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class LetterService {
 
-    private final UserRepository userRepository;
-    private final WeeklyLetterRepository weeklyLetterRepository;
-    private final PlaceRepository placeRepository;
-    private final LetterCenterFinder letterCenterFinder;
-    private final Clock clock;
+    private final LetterReader letterReader;
+    private final NearbyPlaceSyncer nearbyPlaceSyncer;
 
-    // 가장 최근 편지 · 없으면 empty → 컨트롤러가 204
-    public Optional<LetterResponse> getLatest(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.UNAUTHORIZED));
-        return weeklyLetterRepository.findFirstByUserIdOrderByWeekStartDesc(userId)
-                .map(letter -> LetterResponse.of(letter, user.getNickname(), places(user, letter)));
-    }
-
-    // 저장된 순서 그대로 · 지금 닫힌 장소는 뺌
-    private List<PlaceItem> places(User user, WeeklyLetter letter) {
-        List<Long> ids = letter.recommendedPlaceIdList();
-        if (ids.isEmpty()) {
-            return List.of();
+    // location : 편지를 여는 순간의 위치 (저장 X) · 없으면 편지를 만들 때 고른 장소
+    public Optional<LetterResponse> getLatest(Long userId, GeoPoint location) {
+        if (location != null) {
+            nearbyPlaceSyncer.syncAround(location); // 동네 지도를 안 열어 본 동네도 장소가 있게 (동네 지도와 같은 방식)
         }
-        LocalDate today = LocalDate.now(clock);
-        Map<Long, Place> byId = placeRepository.findAllById(ids).stream()
-                .collect(Collectors.toMap(Place::getId, Function.identity()));
-        GeoPoint center = letterCenterFinder.centerOf(user, letter.getWeekStart()); // 만들 때와 같은 기준점
-        return ids.stream()
-                .map(byId::get)
-                .filter(place -> place != null && place.isOpenOn(today))
-                .map(place -> PlaceItem.of(place, center))
-                .toList();
+        return letterReader.getLatest(userId, location);
     }
 }
