@@ -21,6 +21,7 @@ import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 import com.nagabolkka.backend.global.exception.CustomException;
@@ -40,6 +41,9 @@ public class DailyQuest extends BaseEntity {
 
     // 바꾸기는 하루 2번까지 (담기 · 연습 교체는 미포함)
     public static final int MAX_CHANGE = 2;
+
+    // 난이도 바꾸기는 하루 1번 (바꾸기 2번과 따로)
+    public static final int MAX_DIFFICULTY_CHANGE = 1;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -102,6 +106,11 @@ public class DailyQuest extends BaseEntity {
     @Column(nullable = false)
     private int changeCount;
 
+    // 오늘 난이도 바꾼 횟수 (운영 기존 행은 기본값 0 으로 채워짐)
+    @ColumnDefault("0")
+    @Column(nullable = false)
+    private int difficultyChangeCount;
+
     private LocalDateTime acceptedAt;
 
     private LocalDateTime completedAt;
@@ -120,6 +129,7 @@ public class DailyQuest extends BaseEntity {
         quest.split = false;
         quest.splitDoneSteps = 0;
         quest.changeCount = 0;
+        quest.difficultyChangeCount = 0;
         return quest;
     }
 
@@ -186,6 +196,11 @@ public class DailyQuest extends BaseEntity {
         return MAX_CHANGE - changeCount;
     }
 
+    // 오늘 남은 난이도 바꾸기 횟수 (0 · 1)
+    public int getDifficultyChangeRemaining() {
+        return Math.max(0, MAX_DIFFICULTY_CHANGE - difficultyChangeCount);
+    }
+
     // 실제 장소 찾음 : 이름 · 좌표 · 거리 (사용자 좌표는 저장하지 않음)
     public void foundPlace(String kakaoPlaceId, String placeName, BigDecimal placeLat, BigDecimal placeLng,
                            int distanceM) {
@@ -234,6 +249,13 @@ public class DailyQuest extends BaseEntity {
         changeCount++;
     }
 
+    // 난이도 바꾸기 → 고른 난이도 새 미션 · 처음 상태로 · 난이도 횟수 +1 (바꾸기 횟수는 그대로)
+    public void changeDifficulty(Mission newMission) {
+        checkDifficultyChangeable();
+        replaceMission(newMission);
+        difficultyChangeCount++;
+    }
+
     // 오늘은 쉬기 (복원도 · 조각 그대로)
     public void skip() {
         checkNotDone();
@@ -264,13 +286,25 @@ public class DailyQuest extends BaseEntity {
         }
     }
 
+    // 난이도 바꾸기 전에 확인 (새 미션 고르기 전에 부른다)
+    // 끝남 → QUEST_ALREADY_DONE · 수락 뒤 · 담기 · 연습 미션 → LOCKED · 오늘 1번 다 씀 → LIMIT
+    public void checkDifficultyChangeable() {
+        checkNotDone();
+        if (status != QuestStatus.ASSIGNED || source != QuestSource.AUTO) {
+            throw new CustomException(ErrorCode.QUEST_DIFFICULTY_LOCKED);
+        }
+        if (difficultyChangeCount >= MAX_DIFFICULTY_CHANGE) {
+            throw new CustomException(ErrorCode.QUEST_DIFFICULTY_LIMIT);
+        }
+    }
+
     private void checkNotDone() {
         if (isDone()) {
             throw new CustomException(ErrorCode.QUEST_ALREADY_DONE);
         }
     }
 
-    // 미션 교체 : 처음 배정된 것처럼 되돌린다
+    // 미션 교체 : 처음 배정된 것처럼 되돌린다 (바꾸기 · 난이도 횟수는 그대로)
     private void replaceMission(Mission newMission) {
         this.mission = newMission;
         this.region = newMission.getRegion();
