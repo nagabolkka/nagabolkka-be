@@ -34,6 +34,8 @@ public enum ErrorCode {
     ONBOARDING_ALREADY_DONE(HttpStatus.CONFLICT, "이미 시작 체크를 마쳤어요"),
     QUEST_CHANGE_LIMIT(HttpStatus.CONFLICT, "오늘은 더 바꿀 수 없어요"),
     QUEST_ALREADY_DONE(HttpStatus.CONFLICT, "이미 끝난 퀘스트예요"),
+    QUEST_DIFFICULTY_LIMIT(HttpStatus.CONFLICT, "오늘은 난이도를 이미 바꿨어요"),   // 하루 1번
+    QUEST_DIFFICULTY_LOCKED(HttpStatus.CONFLICT, "지금은 난이도를 바꿀 수 없어요"), // 수락 뒤 · 담기 · 연습 미션 · 끝 단계
     REGION_NOT_SUGGESTED(HttpStatus.CONFLICT, "지금은 다음 지역으로 갈 수 없어요"),
     PRACTICE_DAILY_LIMIT(HttpStatus.CONFLICT, "오늘 연습은 여기까지예요"),
     PRACTICE_TURN_LIMIT(HttpStatus.CONFLICT, "대화 횟수를 다 썼어요"),
