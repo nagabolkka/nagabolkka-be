@@ -16,8 +16,8 @@ public class WeeklyLetterJob {
     private final WeeklyLetterGenerator generator;
     private final Clock clock;
 
-    // 매주 월 03:00 KST → 지난주 (월 ~ 일) 편지
-    @Scheduled(cron = "${letter.weekly-cron:0 0 3 * * MON}", zone = "Asia/Seoul")
+    // 매주 월 10:00 KST → 지난주 (월 ~ 일) 편지 · 만들자마자 편지 알림
+    @Scheduled(cron = "${letter.weekly-cron:0 0 10 * * MON}", zone = "Asia/Seoul")
     public void run() {
         generator.generate(lastWeekStart(LocalDate.now(clock)));
     }
