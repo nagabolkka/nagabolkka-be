@@ -3,6 +3,7 @@ package com.nagabolkka.backend.domain.quest.service;
 import com.nagabolkka.backend.global.common.Difficulty;
 
 // 다음 날 난이도 : 완료 기분 · 쉬기로 한 단계씩 (EASY ↔ NORMAL ↔ CHALLENGE)
+// 사용자가 오늘 퀘스트 난이도를 고를 때도 한 단계씩
 public final class DifficultyPolicy {
 
     private static final int MOOD_UP = 5;   // 좋았어요
@@ -30,6 +31,16 @@ public final class DifficultyPolicy {
     // 위기 감지 → 가장 쉬움
     public static Difficulty afterCrisis() {
         return Difficulty.EASY;
+    }
+
+    // 「더 쉽게」 : 한 단계 아래 (EASY 면 그대로 → 서비스에서 409)
+    public static Difficulty easier(Difficulty current) {
+        return down(current);
+    }
+
+    // 「더 어렵게」 : 한 단계 위 (CHALLENGE 면 그대로 → 서비스에서 409)
+    public static Difficulty harder(Difficulty current) {
+        return up(current);
     }
 
     private static Difficulty up(Difficulty current) {

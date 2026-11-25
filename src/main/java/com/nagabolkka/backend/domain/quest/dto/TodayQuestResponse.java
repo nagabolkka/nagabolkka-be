@@ -30,7 +30,9 @@ public record TodayQuestResponse(
         @Schema(example = "false") boolean isSplit,
         @Schema(description = "쪼갠 뒤에만 채워짐 (미션별 고정 단계)") List<StepInfo> steps,
         @Schema(description = "오늘 남은 바꾸기 횟수", example = "2") int changeRemaining,
-        @Schema(description = "기록 화면 쉼의 조각 안내 : 1계단 퀘스트 + 쉼의 조각을 아직 안 받음", example = "true") boolean restPieceAvailable
+        @Schema(description = "기록 화면 쉼의 조각 안내 : 1계단 퀘스트 + 쉼의 조각을 아직 안 받음", example = "true") boolean restPieceAvailable,
+        @Schema(description = "오늘 남은 난이도 바꾸기 횟수 (하루 1번 · 수락 전 자동 배정 퀘스트만 바꿀 수 있음)", example = "1")
+        int difficultyChangeRemaining
 ) {
 
     // 도보 시간 = 직선거리 × 1.3 ÷ 67m/분
@@ -88,7 +90,8 @@ public record TodayQuestResponse(
                 quest.isSplit(),
                 steps.stream().map(s -> new StepInfo(s.getStepNo(), quest.fill(s.getContent()))).toList(),
                 quest.getChangeRemaining(),
-                restPieceAvailable
+                restPieceAvailable,
+                quest.getDifficultyChangeRemaining()
         );
     }
 }

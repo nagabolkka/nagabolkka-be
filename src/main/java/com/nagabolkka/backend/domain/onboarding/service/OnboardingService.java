@@ -43,11 +43,10 @@ public class OnboardingService {
             throw new CustomException(ErrorCode.ONBOARDING_ALREADY_DONE);
         }
 
-        // 3) 구 · 목표
+        // 3) 구 · 목표 (목표는 선택 → 없으면 null, 나중에 내 정보 수정으로 고름)
         District district = districtRepository.findById(request.districtId())
                 .orElseThrow(() -> new CustomException(ErrorCode.INVALID_INPUT));
-        Goal goal = goalRepository.findById(request.goalId())
-                .orElseThrow(() -> new CustomException(ErrorCode.INVALID_INPUT));
+        Goal goal = findGoal(request.goalId());
 
         // 4) 점수 → 출발 계단
         int score = StartCheckScore.sum(request.answers());
@@ -72,6 +71,15 @@ public class OnboardingService {
     }
 
     // 지나온 계단은 PASSED → 쉬운 날 그 계단 미션도 배정
+    // 목표 id 가 있으면 찾고 (없는 id → 400), 없으면 null
+    private Goal findGoal(Long goalId) {
+        if (goalId == null) {
+            return null;
+        }
+        return goalRepository.findById(goalId)
+                .orElseThrow(() -> new CustomException(ErrorCode.INVALID_INPUT));
+    }
+
     private static RegionStatus statusOf(Region region, Region startRegion) {
         if (region.getStageNo() < startRegion.getStageNo()) {
             return RegionStatus.PASSED;

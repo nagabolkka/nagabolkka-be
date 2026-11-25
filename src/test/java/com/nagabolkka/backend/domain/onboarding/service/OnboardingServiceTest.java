@@ -119,6 +119,25 @@ class OnboardingServiceTest {
     }
 
     @Test
+    @DisplayName("목표 없이 시작 : goalId 가 없으면 목표 조회 없이 완료 · 응답 goal null · 사용자 목표 null")
+    void startCheck_withoutGoal() {
+        given(userRepository.findByIdForUpdate(USER_ID)).willReturn(Optional.of(user));
+        given(districtRepository.findById(DISTRICT_ID)).willReturn(Optional.of(district));
+        given(regionRepository.findAllByOrderByStageNoAsc()).willReturn(regions);
+
+        StartCheckResponse response = onboardingService.startCheck(
+                USER_ID, new StartCheckRequest(ANSWERS_SCORE_2, DISTRICT_ID, null));
+
+        assertThat(response.region().stageNo()).isEqualTo(1);
+        assertThat(response.goal()).isNull();
+        then(goalRepository).should(never()).findById(any());
+
+        assertThat(user.isOnboardingCompleted()).isTrue();
+        assertThat(user.getCurrentGoal()).isNull();
+        assertThat(user.getCurrentRegion()).isSameAs(regions.get(0));
+    }
+
+    @Test
     @DisplayName("1계단 출발 : 지나온 계단 없음 → 1 ACTIVE · 나머지 LOCKED")
     void startCheck_stage1_noPassed() {
         given(userRepository.findByIdForUpdate(USER_ID)).willReturn(Optional.of(user));

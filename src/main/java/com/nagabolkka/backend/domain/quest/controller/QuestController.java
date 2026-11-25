@@ -73,8 +73,10 @@ public class QuestController {
                     + "- `REVISIT` 지나온 계단 미션 받기 (`stageNo` 필수) → 그 계단에서 못 찾은 조각 중 가장 쉬운 미션 · 바꾸기 횟수 1번 사용\n"
                     + "- `PRACTICE_MISSION` 연습 후 실제 미션 담기 (`missionId` 필수 = 연습 끝 응답의 `followMission.missionId`) "
                     + "→ `source: PRACTICE` · 계단은 내 현재 계단 · 바꾸기 횟수 그대로. "
-                    + "오늘 끝낸 연습이 제안한 미션만 가능 (아니면 404), 이미 같은 미션이면 그대로\n\n"
-                    + "`lat` · `lng` (선택) : `CHANGE` · `REVISIT` · `PRACTICE_MISSION` 으로 바깥 미션이 되면 근처 실제 장소 기준. 없으면 내 구 중심\n\n"
+                    + "오늘 끝낸 연습이 제안한 미션만 가능 (아니면 404), 이미 같은 미션이면 그대로\n"
+                    + "- `EASIER` · `HARDER` 난이도 한 단계 쉽게 · 어렵게 → 같은 계단 · 고른 난이도 미션 (최근에 안 한 것 먼저). "
+                    + "하루 1번 (`difficultyChangeRemaining`) · 수락 전 자동 배정 퀘스트만 · 바꾸기 횟수 그대로 · 내일 난이도는 그대로\n\n"
+                    + "`lat` · `lng` (선택) : `CHANGE` · `REVISIT` · `PRACTICE_MISSION` · `EASIER` · `HARDER` 로 바깥 미션이 되면 근처 실제 장소 기준. 없으면 내 구 중심\n\n"
                     + "완료 · 쉬기 한 퀘스트에는 어떤 동작도 할 수 없어요. (409)")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "동작 후 오늘 퀘스트",
@@ -91,17 +93,20 @@ public class QuestController {
             @ApiResponse(responseCode = "404", description = "PRACTICE_MISSION : 오늘 끝낸 연습에서 제안받지 않은 미션 · 없는 미션",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class), examples =
                     @ExampleObject(name = "NOT_FOUND", value = "{\"code\":\"NOT_FOUND\",\"message\":\"찾을 수 없어요\"}"))),
-            @ApiResponse(responseCode = "409", description = "이미 끝난 퀘스트 · 바꾸기 횟수 초과 (CHANGE · REVISIT) · 시작 체크 전",
+            @ApiResponse(responseCode = "409", description = "이미 끝난 퀘스트 · 바꾸기 횟수 초과 (CHANGE · REVISIT) · "
+                    + "난이도 바꾸기 1번 다 씀 · 지금은 난이도를 바꿀 수 없음 (수락 뒤 · 담기 · 연습 미션 · 끝 단계) · 시작 체크 전", // 🆕
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class), examples = {
                             @ExampleObject(name = "QUEST_ALREADY_DONE", value = "{\"code\":\"QUEST_ALREADY_DONE\",\"message\":\"이미 끝난 퀘스트예요\"}"),
                             @ExampleObject(name = "QUEST_CHANGE_LIMIT", value = "{\"code\":\"QUEST_CHANGE_LIMIT\",\"message\":\"오늘은 더 바꿀 수 없어요\"}"),
+                            @ExampleObject(name = "QUEST_DIFFICULTY_LIMIT", value = "{\"code\":\"QUEST_DIFFICULTY_LIMIT\",\"message\":\"오늘은 난이도를 이미 바꿨어요\"}"),
+                            @ExampleObject(name = "QUEST_DIFFICULTY_LOCKED", value = "{\"code\":\"QUEST_DIFFICULTY_LOCKED\",\"message\":\"지금은 난이도를 바꿀 수 없어요\"}"),
                             @ExampleObject(name = "ONBOARDING_REQUIRED", value = "{\"code\":\"ONBOARDING_REQUIRED\",\"message\":\"시작 체크를 먼저 해 주세요\"}")
                     }))
     })
     @PostMapping("/today/actions")
     public TodayQuestResponse act(@Parameter(hidden = true) @AuthenticationPrincipal Long userId,
                                   @Valid @RequestBody QuestActionRequest request,
-                                  @Parameter(description = "현재 위도 (선택, 바꾸기 · 지나온 계단 · 연습 후 미션 장소 기준)", example = "37.5894")
+                                  @Parameter(description = "현재 위도 (선택, 바꾸기 · 지나온 계단 · 연습 후 미션 · 난이도 바꾸기 장소 기준)", example = "37.5894")
                                   @RequestParam(required = false) Double lat,
                                   @Parameter(description = "현재 경도 (선택)", example = "127.0167")
                                   @RequestParam(required = false) Double lng) {

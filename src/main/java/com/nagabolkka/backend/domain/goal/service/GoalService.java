@@ -98,7 +98,7 @@ public class GoalService {
         if (!user.isOnboardingCompleted()) {
             throw new CustomException(ErrorCode.ONBOARDING_REQUIRED);
         }
-        // 시작 체크에서 목표는 필수라 보통 없음 (방어)
+        // 목표 없이 시작한 사용자 (시작 체크에서 목표 선택이 빠짐) → 404, 프론트는 「아직 비어 있어요」 빈 상태
         Goal goal = user.getCurrentGoal();
         if (goal == null) {
             throw new CustomException(ErrorCode.NOT_FOUND);

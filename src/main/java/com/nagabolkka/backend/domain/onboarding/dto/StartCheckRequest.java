@@ -23,8 +23,8 @@ public record StartCheckRequest(
         @NotNull
         Long districtId,
 
-        @Schema(description = "결과 화면에서 고른 목표 id (1 취업 · 2 알바 · 3 모임 · 4 봉사 · 5 학업 복귀)", example = "3")
-        @NotNull
+        @Schema(description = "목표 id (선택 · 1 취업 · 2 알바 · 3 모임 · 4 봉사 · 5 학업 복귀) — 없으면 목표 없이 시작, 나중에 내 정보 수정으로 고름",
+                example = "3", nullable = true)
         Long goalId
 ) {
 }

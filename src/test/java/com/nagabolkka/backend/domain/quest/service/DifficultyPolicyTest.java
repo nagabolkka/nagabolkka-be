@@ -38,4 +38,16 @@ class DifficultyPolicyTest {
     void afterCrisis() {
         assertThat(DifficultyPolicy.afterCrisis()).isEqualTo(Difficulty.EASY);
     }
+
+    @ParameterizedTest(name = "{0} → 더 쉽게 {1} · 더 어렵게 {2}")
+    @DisplayName("사용자가 고르는 난이도 : 한 단계씩 (끝이면 그대로)")
+    @CsvSource({
+            "EASY, EASY, NORMAL",
+            "NORMAL, EASY, CHALLENGE",
+            "CHALLENGE, NORMAL, CHALLENGE"
+    })
+    void easierHarder(Difficulty current, Difficulty easier, Difficulty harder) {
+        assertThat(DifficultyPolicy.easier(current)).isEqualTo(easier);
+        assertThat(DifficultyPolicy.harder(current)).isEqualTo(harder);
+    }
 }
