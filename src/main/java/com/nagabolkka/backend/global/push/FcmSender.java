@@ -62,14 +62,17 @@ public class FcmSender {
                         continue;
                     }
                     failed++;
-                    MessagingErrorCode code = each.get(i).getException().getMessagingErrorCode();
+                    FirebaseMessagingException ex = each.get(i).getException();
+                    MessagingErrorCode code = ex.getMessagingErrorCode();
+                    // 실패 이유 (토큰 값은 찍지 않음)
+                    log.warn("FCM 개별 실패 : code={} · {} · {}", code, ex.getErrorCode(), ex.getMessage());
                     if (code == MessagingErrorCode.UNREGISTERED || code == MessagingErrorCode.INVALID_ARGUMENT) {
                         expired.add(chunk.get(i)); // 앱 지움 · 권한 끔 · 잘못된 토큰
                     }
                 }
             } catch (FirebaseMessagingException e) {
                 failed += chunk.size(); // 이 묶음만 실패, 다음 묶음은 계속
-                log.warn("FCM 발송 실패 ({}개) : {}", chunk.size(), e.getMessagingErrorCode());
+                log.warn("FCM 발송 실패 ({}개) : {} · {}", chunk.size(), e.getMessagingErrorCode(), e.getMessage());
             }
         }
         return new Result(sent, failed, expired);
