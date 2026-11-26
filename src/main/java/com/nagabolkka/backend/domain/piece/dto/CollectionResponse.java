@@ -8,6 +8,7 @@ import com.nagabolkka.backend.domain.region.entity.RegionStatus;
 import com.nagabolkka.backend.domain.region.entity.UserRegion;
 import io.swagger.v3.oas.annotations.media.Schema;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -53,10 +54,12 @@ public record CollectionResponse(
             @Schema(example = "true") boolean found,
             @Schema(description = "받은 횟수", example = "2") int count,
             @Schema(description = "찾은 조각만", example = "하늘에 색이 돌아왔어", nullable = true) String restoreText,
-            @Schema(description = "못 찾은 조각만", example = "현관문 열고 햇빛 10분 쬐기", nullable = true) String hint
+            @Schema(description = "못 찾은 조각만", example = "현관문 열고 햇빛 10분 쬐기", nullable = true) String hint,
+            @Schema(description = "처음 받은 날 (찾은 조각만)", example = "2026-11-20", nullable = true) LocalDate acquiredAt,
+            @Schema(description = "처음 받은 날의 기분 1 ~ 5 = 도장 잉크 색 (퀘스트 밖에서 받았으면 null)", example = "5", nullable = true) Integer mood
     ) {
         // pieceCount 가 null = 아직 못 찾음
-        public static Slot of(Piece piece, PieceCount pieceCount) {
+        public static Slot of(Piece piece, PieceCount pieceCount, Integer mood) {
             boolean found = pieceCount != null;
             return new Slot(
                     piece.getSlotNo(),
@@ -66,7 +69,9 @@ public record CollectionResponse(
                     found,
                     found ? pieceCount.count().intValue() : 0,
                     found ? piece.getRestoreText() : null,
-                    found ? null : piece.getHint()
+                    found ? null : piece.getHint(),
+                    found ? pieceCount.firstAcquiredAt().toLocalDate() : null,
+                    found ? mood : null
             );
         }
     }
