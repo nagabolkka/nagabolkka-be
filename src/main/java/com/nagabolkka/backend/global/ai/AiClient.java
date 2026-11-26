@@ -77,6 +77,14 @@ public class AiClient {
     public record TranscribeResult(String text, boolean fallback) {
     }
 
+    // 루미 동행 통화 : 임시 키 요청 (설명 · 목적지 없으면 null) · 루미가 미션에 맞게 돕도록 설명도 전달
+    public record LiveSessionRequest(String nickname, String missionTitle, String missionDescription, String placeName) {
+    }
+
+    // clientSecret = 브라우저가 OpenAI Realtime 에 WebRTC 로 연결할 임시 키 · expiresAt = unix 초
+    public record LiveSessionResult(String clientSecret, long expiresAt, String model) {
+    }
+
     // 회고 · 연습 메시지 위기 검사
     public Optional<CrisisResult> checkCrisis(String text) {
         return call(() -> post("/ai/crisis/check", Map.of("text", text), CrisisResult.class));
@@ -112,7 +120,7 @@ public class AiClient {
                 .body(LetterResult.class));
     }
 
-    // 🆕 연습 음성 → 글자 (녹음 파일은 저장 · 로그 X · 10초)
+    // 연습 음성 → 글자 (녹음 파일은 저장 · 로그 X · 10초)
     public Optional<TranscribeResult> transcribe(byte[] audio, String filename, String contentType) {
         HttpHeaders partHeaders = new HttpHeaders();
         partHeaders.setContentType(MediaType.parseMediaType(contentType));
@@ -130,6 +138,12 @@ public class AiClient {
                 .body(form)
                 .retrieve()
                 .body(TranscribeResult.class));
+    }
+
+    // 루미 동행 통화 임시 키 (OpenAI 호출이 있어 10초 클라이언트 · 실패하면 empty)
+    public Optional<LiveSessionResult> liveSession(LiveSessionRequest request) {
+        return call(() -> aiSttRestClient.post().uri("/ai/live/session").body(request).retrieve()
+                .body(LiveSessionResult.class));
     }
 
     private <T> T post(String uri, Object body, Class<T> type) {
