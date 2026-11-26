@@ -26,6 +26,13 @@ public interface PieceAcquisitionRepository extends JpaRepository<PieceAcquisiti
             + "from PieceAcquisition pa where pa.user.id = :userId group by pa.piece.id")
     List<PieceCount> countByPiece(@Param("userId") Long userId);
 
+    // 도감 잉크 : 받은 기록마다 시각 · 그 퀘스트의 기분 (오래된 순 → 서비스에서 조각별 첫 기록만 씀)
+    @Query("select new com.nagabolkka.backend.domain.piece.repository.PieceMood(pa.piece.id, pa.createdAt, qr.mood) "
+            + "from PieceAcquisition pa left join QuestRecord qr on qr.dailyQuest = pa.dailyQuest "
+            + "where pa.user.id = :userId and pa.piece.region is not null "
+            + "order by pa.createdAt asc, pa.id asc")
+    List<PieceMood> findMoodsByUser(@Param("userId") Long userId);
+
     // 마이페이지 도감 진행 : 찾은 칸 수 (지역 칸만 · 같은 조각 여러 번 = 1칸)
     @Query("select count(distinct pa.piece.id) from PieceAcquisition pa "
             + "where pa.user.id = :userId and pa.piece.region is not null")

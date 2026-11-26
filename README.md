@@ -17,13 +17,16 @@ Spring Boot 로 만든 REST API 서버이며, 인증 · 데이터 저장 · 퀘�
 | **공통 Audit** | 모든 엔티티가 `BaseEntity` 를 상속해 `created_at` · `updated_at` · `created_by` · `updated_by` 를 JPA Auditing 으로 자동 기록합니다. |
 | **에러 처리** | `ErrorCode` + `GlobalExceptionHandler` 로 모든 실패 응답을 `{ code, message }` 형식으로 통일하고, 프론트는 `code` 로 분기합니다. |
 | **동시성** | 하루 한 개 퀘스트는 `(user_id, quest_date)` 유니크 제약 + 사용자 행 비관적 잠금(`PESSIMISTIC_WRITE`)으로 중복 요청을 막습니다. |
-| **AI 연동** | `AiClient` 로 내부 AI 서버(위기 감지 · 루미 한마디 · 연습 대화 · 주간 엽서)를 호출합니다. AI 호출은 트랜잭션 밖에서 해 DB 커넥션을 오래 잡지 않고, 실패하면 템플릿 문장 · 고정 대사로 대체합니다. |
+| **AI 연동** | `AiClient` 로 내부 AI 서버(위기 감지 · 루미 한마디 · 연습 대화 · 연습 음성 입력 · 주간 엽서 · 동행 통화 임시 키)를 호출합니다. AI 호출은 트랜잭션 밖에서 해 DB 커넥션을 오래 잡지 않고, 실패하면 템플릿 문장 · 고정 대사로 대체합니다. |
 | **안전장치** | 회고 · 연습 대화는 AI 위기 감지를 먼저 거치고, AI 서버가 응답하지 않아도 Spring 규칙(`CrisisFallback`)으로 다시 검사합니다. 위기면 회고를 저장하지 않고 `crisis_events` 만 기록합니다. |
 | **날씨** | 기상청 단기예보 API 를 사용합니다. 받은 위경도를 기상청 격자(`nx, ny`)로 변환하고, 격자별로 1시간 캐시합니다. 위치가 없으면 가입한 구의 격자를 씁니다. |
 | **장소** | 카카오 로컬 API 로 내 위치 주변의 공원 · 도서관 · 주민 공간 · 청년 공간을 검색해 DB 에 동기화하고, 거리순으로 내려줍니다. |
 | **퀘스트 배정** | 사용자의 지역(섬) · 난이도 · 날씨 · 담아 둔 장소를 기준으로 오늘 퀘스트를 배정하고, 완료 기록에 따라 다음 날 난이도를 조정합니다. 수락 전에는 하루 한 번 더 쉽게(`EASIER`) · 더 어렵게(`HARDER`) 바꿀 수 있습니다. 다음 지역 제안 규칙은 `NextRegionPolicy` 로 분리해 홈과 완료 API 가 같이 씁니다. |
 | **시작 체크 · 목표** | 시작 체크는 목표 없이도 시작할 수 있도록 `goalId` 를 선택값으로 받고, 목표는 나중에 내 정보의 목표 변경 API 로 정합니다. 고른 목표가 없으면 목표 조회는 `NOT_FOUND` 로 응답해 프론트가 빈 상태를 보여 줍니다. |
-| **푸시 알림** | Firebase Admin SDK 로 FCM 알림을 보냅니다. 기기 토큰을 등록받아 오늘 퀘스트 알림을 보내고, `FIREBASE_CREDENTIALS_BASE64` 가 비어 있으면 알림 발송만 건너뜁니다. |
+| **루미 동행 통화** | 오늘 퀘스트(제목 · 설명 · 장소)를 트랜잭션 안에서 읽어 AI 서버에 넘기고, AI 서버가 발급한 OpenAI Realtime 임시 키(60초)와 최대 통화 시간(10분)을 내려줍니다. 음성은 브라우저가 OpenAI 와 WebRTC 로 직접 주고받아 서버를 거치지 않습니다. 통화를 쓸 수 없으면 `CALL_UNAVAILABLE`(409)로 응답합니다. |
+| **푸시 알림** | Firebase Admin SDK 로 FCM 알림을 보냅니다. 기기 토큰을 등록받아 오늘 퀘스트 알림과 관리자 공지 알림을 보내고, 만료된 토큰은 정리합니다. `FIREBASE_CREDENTIALS_BASE64` 가 비어 있으면 알림 발송만 건너뜁니다. |
+| **도감** | 섬별 도장 칸마다 처음 받은 날과 그날 퀘스트 기분을 함께 내려줘, 프론트가 도장 잉크 색과 날짜를 그립니다. |
+| **관리자** | `ADMIN` 권한 사용자만 사용자 목록(닉네임 마스킹) · 공지 등록 · 수정 · 삭제 · 공지 푸시를 쓸 수 있습니다. |
 | **시드 데이터** | `SeedDataInitializer` 가 지역 · 조각 · 미션 · 목표 · 시나리오를 키로 확인해 없을 때만 넣으므로, 운영에서 다시 실행해도 중복되지 않습니다. |
 | **배치** | 오늘 퀘스트 푸시(매일 09:00) · 주간 엽서 생성(월 10:00) · 만료 Refresh 토큰 정리(매일 04:00) · 6개월 지난 위치 이용 기록 삭제(매일 04:30), 모두 KST 기준입니다. |
 | **API 문서** | springdoc-openapi 로 Swagger UI 를 제공하고, JWT Authorize 버튼으로 인증이 필요한 API 를 바로 테스트할 수 있습니다. |
@@ -72,7 +75,7 @@ Spring Boot 로 만든 REST API 서버이며, 인증 · 데이터 저장 · 퀘�
 ## 🏗️ Architecture
 
 ```
-[ nagabolkka-fe (Vercel) ]
+[ nagabolkka-fe (Vercel) ] ──(임시 키 · WebRTC, 동행 통화만)──▶ OpenAI Realtime
             │  HTTPS · JWT
             ▼
 [ Caddy (HTTPS) ] → [ Spring Boot (app) ] → [ MySQL ]
@@ -83,6 +86,7 @@ Spring Boot 로 만든 REST API 서버이며, 인증 · 데이터 저장 · 퀘�
 ```
 
 - AI 서버는 외부에 포트를 열지 않고, Docker 내부 네트워크에서 내부 키로만 호출합니다.
+- 동행 통화 음성은 서버를 거치지 않고, 프론트가 백엔드에서 받은 임시 키로 OpenAI 에 직접 연결합니다. OpenAI API 키는 AI 서버 밖으로 나가지 않습니다.
 
 <br>
 
@@ -95,16 +99,20 @@ src/main/java/com/nagabolkka/backend/
 │   ├── user/            # 내 정보 · 탈퇴
 │   ├── onboarding/      # 시작 체크
 │   ├── home/            # 홈
-│   ├── quest/           # 오늘 퀘스트 · 난이도 바꾸기 · 완료
+│   ├── quest/           # 오늘 퀘스트 · 난이도 바꾸기 · 완료 · 동행 통화
 │   ├── region/          # 지역 · 복원도 · 다음 지역 제안
 │   ├── place/           # 동네 지도 · 담기
 │   ├── practice/        # 연습실
+│   ├── piece/           # 도감 (섬별 도장 · 처음 받은 날 · 기분)
 │   ├── push/            # 기기 토큰 · 알림
-│   └── ...              # 도감 · 기록 · 엽서 · 목표 · 안전 · 공지 · 관리자 · 플러스
-└── global/              # config · security · error · seed · batch · 외부 API 클라이언트 · 푸시 등 공통
+│   ├── notice/          # 공지 · 공지 푸시
+│   ├── admin/           # 관리자 사용자 목록
+│   └── ...              # 기록 · 엽서 · 목표 · 안전 · 플러스 · 미션 · 위치 기록
+└── global/              # config · security · exception · seed · batch · crypto · ai · kakao · weather · push 등 공통
 src/main/resources/
 ├── application.yaml       # 공통 · 로컬(H2)
 └── application-prod.yaml  # 운영(MySQL)
+Dockerfile                 # 실행 전용 이미지 (app.jar 복사)
 docker-compose.yml         # mysql + app + caddy
 Caddyfile
 ```
@@ -178,11 +186,12 @@ MYSQL_ROOT_PASSWORD=
 
 - AWS EC2 에서 Docker Compose 로 `mysql` · `app` · `caddy` 컨테이너를 실행하고, Caddy 가 HTTPS 인증서를 자동으로 발급합니다.
 - GitHub Actions (`deploy.yml`)
-  - `main` push → EC2 에 접속해 `origin/main` 동기화 → `docker compose up -d --build` → `/api/health` 헬스 체크
+  - `main` push → GitHub 에서 `bootJar` 로 jar 빌드 → `scp` 로 `app.jar` 를 서버에 복사 → `origin/main` 동기화 → `docker compose up -d --build` (jar 복사만) → `/api/health` 헬스 체크
+  - 서버(RAM 1GB)에서 Gradle 빌드를 하면 다른 컨테이너가 스왑으로 밀려나서, 빌드는 GitHub 에서 하고 서버는 실행만 합니다.
   - `develop` 은 배포하지 않습니다.
   - 배포하는 동안만 Actions 러너 IP 를 보안 그룹에 임시로 열고, 끝나면 닫습니다.
 - `.env.example` 에 새 키가 추가된 PR 은 **main 머지 전에 서버 `.env` 부터 채웁니다.** (안 채우면 앱이 뜨지 않음)
-- 프론트와 같이 바뀌는 API 는 **백엔드를 먼저** main 에 배포합니다.
+- 프론트와 같이 바뀌는 API 는 **백엔드를 먼저** main 에 배포합니다. AI 서버를 새로 호출하는 API 는 **AI 서버 → 백엔드 → 프론트** 순서로 배포합니다.
 
 <br>
 

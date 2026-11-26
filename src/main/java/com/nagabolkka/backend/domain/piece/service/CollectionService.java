@@ -7,6 +7,7 @@ import com.nagabolkka.backend.domain.piece.dto.CollectionResponse.Slot;
 import com.nagabolkka.backend.domain.piece.entity.Piece;
 import com.nagabolkka.backend.domain.piece.repository.PieceAcquisitionRepository;
 import com.nagabolkka.backend.domain.piece.repository.PieceCount;
+import com.nagabolkka.backend.domain.piece.repository.PieceMood;
 import com.nagabolkka.backend.domain.piece.repository.PieceRepository;
 import com.nagabolkka.backend.domain.region.entity.UserRegion;
 import com.nagabolkka.backend.domain.region.repository.UserRegionRepository;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -45,6 +47,14 @@ public class CollectionService {
         Map<Long, PieceCount> counts = pieceAcquisitionRepository.countByPiece(userId).stream()
                 .collect(Collectors.toMap(PieceCount::pieceId, Function.identity()));
 
+        // 도장 잉크 : 조각마다 처음 받은 날의 기분 (오래된 순이라 처음 것만 남김)
+        Map<Long, Integer> firstMoods = new HashMap<>();
+        for (PieceMood pieceMood : pieceAcquisitionRepository.findMoodsByUser(userId)) {
+            if (!firstMoods.containsKey(pieceMood.pieceId())) {
+                firstMoods.put(pieceMood.pieceId(), pieceMood.mood()); // 퀘스트 밖에서 받았으면 null
+            }
+        }
+
         // 조각 전체 (25칸 + 보너스) → 지역 칸 · 보너스로 나눔
         List<Piece> pieces = pieceRepository.findAll();
         Map<Long, List<Piece>> piecesByRegion = pieces.stream()
@@ -53,7 +63,7 @@ public class CollectionService {
 
         // 지역 5개 (계단 순서) · 칸 1 ~ 5
         List<RegionPieces> regions = userRegionRepository.findByUserIdOrderByRegionStageNoAsc(userId).stream()
-                .map(userRegion -> toRegionPieces(userRegion, piecesByRegion, counts))
+                .map(userRegion -> toRegionPieces(userRegion, piecesByRegion, counts, firstMoods))
                 .toList();
 
         List<Slot> allSlots = regions.stream().flatMap(region -> region.slots().stream()).toList();
@@ -70,10 +80,10 @@ public class CollectionService {
     }
 
     private static RegionPieces toRegionPieces(UserRegion userRegion, Map<Long, List<Piece>> piecesByRegion,
-                                               Map<Long, PieceCount> counts) {
+                                               Map<Long, PieceCount> counts, Map<Long, Integer> firstMoods) {
         List<Slot> slots = piecesByRegion.getOrDefault(userRegion.getRegion().getId(), List.of()).stream()
                 .sorted(Comparator.comparing(Piece::getSlotNo))
-                .map(piece -> Slot.of(piece, counts.get(piece.getId())))
+                .map(piece -> Slot.of(piece, counts.get(piece.getId()), firstMoods.get(piece.getId())))
                 .toList();
         return RegionPieces.of(userRegion, slots);
     }
