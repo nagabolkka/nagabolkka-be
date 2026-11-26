@@ -9,6 +9,7 @@ import com.nagabolkka.backend.domain.piece.entity.Piece;
 import com.nagabolkka.backend.domain.piece.entity.PieceType;
 import com.nagabolkka.backend.domain.piece.repository.PieceAcquisitionRepository;
 import com.nagabolkka.backend.domain.piece.repository.PieceCount;
+import com.nagabolkka.backend.domain.piece.repository.PieceMood;
 import com.nagabolkka.backend.domain.piece.repository.PieceRepository;
 import com.nagabolkka.backend.domain.region.entity.Region;
 import com.nagabolkka.backend.domain.region.entity.RegionStatus;
@@ -28,6 +29,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -131,6 +133,30 @@ class CollectionServiceTest {
         assertThat(response.regions().get(1).status()).isEqualTo(RegionStatus.LOCKED); // 아직 안 연 챕터도 칸 · 힌트는 내려줌
         assertThat(response.regions().get(1).slots()).extracting(Slot::hint).containsExactly("첫걸음 조각 힌트");
         assertThat(response.bonusPieces()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("도장 잉크 : 찾은 칸은 처음 받은 날 · 그날 기분 / 퀘스트 밖에서 받았으면 기분 null / 못 찾은 칸은 둘 다 null")
+    void slotMoodAndDate() {
+        givenCollection(List.of(new PieceCount(1L, 2L, NOW), new PieceCount(5L, 1L, NOW.plusDays(2))));
+        given(pieceAcquisitionRepository.findMoodsByUser(USER_ID)).willReturn(List.of(
+                new PieceMood(1L, NOW, 5),                 // 햇살 처음 : 좋았어요
+                new PieceMood(5L, NOW.plusDays(2), null),  // 쉼 : 퀘스트 밖
+                new PieceMood(1L, NOW.plusDays(3), 1)));   // 햇살 두 번째 : 무시
+
+        RegionPieces stage1 = collectionService.getCollection(USER_ID).regions().get(0);
+
+        Slot sun = stage1.slots().get(0);
+        assertThat(sun.acquiredAt()).isEqualTo(LocalDate.of(2026, 11, 14));
+        assertThat(sun.mood()).isEqualTo(5);
+
+        Slot morning = stage1.slots().get(1);
+        assertThat(morning.acquiredAt()).isNull();
+        assertThat(morning.mood()).isNull();
+
+        Slot rest = stage1.slots().get(2);
+        assertThat(rest.acquiredAt()).isEqualTo(LocalDate.of(2026, 11, 16));
+        assertThat(rest.mood()).isNull();
     }
 
     @Test
